@@ -8,6 +8,8 @@ import { uploadSheet, resetData } from "../../../Redux/Actions/dataActions";
 
 function ModalContent(props) {
   const [disabled, setDisabled] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
 
   const [requestData, setRequestData] = useState({
     composer: "",
@@ -46,15 +48,23 @@ function ModalContent(props) {
       uploadFile: uploadFile,
     };
 
-    const makeCalls = (_callback) => {
-      props.uploadSheet(newData, () => {
+    setUploading(true);
+    setError(null);
+
+    props.uploadSheet(
+      newData,
+      () => {
         props.resetData();
         props.onClose();
-        _callback();
-      });
-    };
-
-    makeCalls(() => window.location.reload());
+        window.location.reload();
+      },
+      (message) => {
+        // Previously a failed request left this button stuck with no
+        // feedback at all, since nothing ever ran on failure.
+        setUploading(false);
+        setError(message);
+      }
+    );
   };
 
   return (
@@ -79,11 +89,14 @@ function ModalContent(props) {
       <Button
         variant="contained"
         color="primary"
-        disabled={disabled}
+        disabled={disabled || uploading}
         onClick={sendRequest}
       >
-        Upload
+        {uploading ? "Uploading..." : "Upload"}
       </Button>
+      {error && (
+        <div style={{ color: "#bf616a", marginTop: "10px" }}>{error}</div>
+      )}
     </div>
   );
 }

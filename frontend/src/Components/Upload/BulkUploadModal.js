@@ -22,6 +22,7 @@ function BulkUploadModal(props) {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [summary, setSummary] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleChange = (event) => {
     setRequestData({
@@ -37,12 +38,22 @@ function BulkUploadModal(props) {
   const sendRequest = () => {
     setUploading(true);
     setSummary(null);
+    setError(null);
 
-    props.bulkUploadSheets({ ...requestData, files }, (data) => {
-      setUploading(false);
-      setSummary(data);
-      props.resetData();
-    });
+    props.bulkUploadSheets(
+      { ...requestData, files },
+      (data) => {
+        setUploading(false);
+        setSummary(data);
+        props.resetData();
+      },
+      (message) => {
+        // Previously a failed request left the button stuck disabled
+        // forever with no feedback - this is what fixes that.
+        setUploading(false);
+        setError(message);
+      }
+    );
   };
 
   const disabled = files.length === 0 || uploading;
@@ -82,6 +93,10 @@ function BulkUploadModal(props) {
               files.length === 1 ? "" : "s"
             }`}
       </Button>
+
+      {error && (
+        <div style={{ color: "#bf616a", marginTop: "10px" }}>{error}</div>
+      )}
 
       {summary && (
         <div className="bulk-upload-summary">

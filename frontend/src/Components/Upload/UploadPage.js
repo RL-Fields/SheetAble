@@ -5,21 +5,24 @@ import "./Upload.css";
 
 import DragNDrop from "./DragNDrop";
 
-function UploadPage() {
+import { connect } from "react-redux";
+import { uploadSheet, resetData } from "../../Redux/Actions/dataActions";
+
+function UploadPage(props) {
   return (
     <Fragment>
       <SideBar />
       <div className="home_content">
-        <InteractiveForm />
+        <InteractiveForm uploadSheet={props.uploadSheet} resetData={props.resetData} />
       </div>
     </Fragment>
   );
 }
 
-const InteractiveForm = () => {
+const InteractiveForm = ({ uploadSheet, resetData }) => {
   const [firstButtonText, setfirstButtonText] = useState("Next Step");
 
-  const [secondButtonText, setSecondButtonText] = useState("Next Step");
+  const [secondButtonText, setSecondButtonText] = useState("Upload");
 
   const [containerClasses, setcontainerClasses] = useState(
     "container slider-one-active"
@@ -32,16 +35,41 @@ const InteractiveForm = () => {
     releaseDate: "1999-12-31",
   });
 
+  const [uploadFile, setUploadFile] = useState(undefined);
+  const [error, setError] = useState(null);
+
   const firstButtonOnClick = (e) => {
     e.preventDefault();
     setfirstButtonText("Saving...");
     setcontainerClasses("container center slider-two-active");
   };
 
+  // This is what was missing before: the wizard's second step had a file
+  // picker but nothing that ever actually sent the file anywhere - clicking
+  // through it just animated to a "success" screen with no upload having
+  // happened. This now really calls the upload API.
   const secondButtonOnClick = (e) => {
     e.preventDefault();
-    setSecondButtonText("Saving...");
-    setcontainerClasses("container full slider-three-active");
+
+    if (uploadFile === undefined) {
+      setError("Choose a PDF first.");
+      return;
+    }
+
+    setSecondButtonText("Uploading...");
+    setError(null);
+
+    uploadSheet(
+      { ...requestData, uploadFile },
+      () => {
+        resetData();
+        setcontainerClasses("container full slider-three-active");
+      },
+      (message) => {
+        setSecondButtonText("Upload");
+        setError(message);
+      }
+    );
   };
 
   const handleChange = (event) => {
@@ -106,11 +134,19 @@ const InteractiveForm = () => {
             </form>
             <form class="slider-form slider-two">
               <h2>Upload the PDF</h2>
-              <DragNDrop
-                requestData={requestData}
-                secondButtonOnClick={secondButtonOnClick}
-                secondButtonText={secondButtonText}
-              />
+              <DragNDrop giveModalData={(file) => setUploadFile(file)} />
+              <button
+                disabled={uploadFile === undefined}
+                class="first next interactive-form-button"
+                onClick={secondButtonOnClick}
+              >
+                {secondButtonText}
+              </button>
+              {error && (
+                <div style={{ color: "#bf616a", marginTop: "10px" }}>
+                  {error}
+                </div>
+              )}
             </form>
             <div class="slider-form slider-three three">
               <h2>
@@ -128,4 +164,9 @@ const InteractiveForm = () => {
   );
 };
 
-export default UploadPage;
+const mapActionsToProps = {
+  uploadSheet,
+  resetData,
+};
+
+export default connect(null, mapActionsToProps)(UploadPage);

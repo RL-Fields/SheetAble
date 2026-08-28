@@ -198,8 +198,10 @@ export const getComposers = () => (dispatch) => {
     });
 };
 
-// Upload a sheet
-export const uploadSheet = (data, _callback) => (dispatch) => {
+// Upload a sheet. _onError(message), if given, fires on any failure -
+// without it, a failed request left calling UI with no way to know it
+// failed (same bug that was hitting the bulk actions).
+export const uploadSheet = (data, _callback, _onError) => (dispatch) => {
   let bodyFormData = new FormData();
   bodyFormData.append("uploadFile", data.uploadFile);
   bodyFormData.append("sheetName", data.sheetName);
@@ -216,12 +218,21 @@ export const uploadSheet = (data, _callback) => (dispatch) => {
       _callback();
     })
     .catch((err) => {
-      if (err.request.status === 401) {
+      if (err.request && err.request.status === 401) {
         store.dispatch(logoutUser());
         window.location.href = "/login";
       }
 
       console.log(err);
+      if (_onError) {
+        const respData = err.response && err.response.data;
+        const message =
+          (respData &&
+            (respData.error || (typeof respData === "string" ? respData : null))) ||
+          err.message ||
+          "Upload failed";
+        _onError(message);
+      }
     });
 };
 
@@ -412,6 +423,17 @@ export const resetData = () => (dispatch) => {
   dispatch({ type: RESET_DATA });
 };
 
+// Pulls a human-readable message out of a failed axios request, whatever
+// shape the backend happened to send it back in.
+const extractErrorMessage = (err) => {
+  const data = err.response && err.response.data;
+  if (data) {
+    if (typeof data === "string") return data;
+    if (data.error) return data.error;
+  }
+  return err.message || "Request failed";
+};
+
 /*
   Bulk upload many PDFs at once under one shared composer/tags/info text.
   data: {
@@ -422,9 +444,12 @@ export const resetData = () => (dispatch) => {
     informationText: "",          // optional
   }
   _callback(responseData) is called with the backend's per-file results
-  ({ uploaded, failed, total, results: [...] }) on success.
+  ({ uploaded, failed, total, results: [...] }) on success. _onError(message),
+  if given, is called on any failure - without it, a failed request used to
+  leave calling UI stuck (e.g. a button disabled forever with no feedback),
+  since nothing ever ran after a rejected promise.
 */
-export const bulkUploadSheets = (data, _callback) => (dispatch) => {
+export const bulkUploadSheets = (data, _callback, _onError) => (dispatch) => {
   let bodyFormData = new FormData();
   data.files.forEach((file) => bodyFormData.append("uploadFile", file));
   bodyFormData.append("composer", data.composer || "");
@@ -442,35 +467,49 @@ export const bulkUploadSheets = (data, _callback) => (dispatch) => {
     .then((res) => {
       _callback(res.data);
     })
-    .catch((err) => checkAuthErr(err, dispatch));
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
 };
 
 // Delete many sheets at once. sheetNames: [safe_sheet_name, ...]
-export const bulkDeleteSheets = (sheetNames, _callback) => (dispatch) => {
+export const bulkDeleteSheets = (sheetNames, _callback, _onError) => (dispatch) => {
   axios
     .post("/sheets/bulk-delete", { sheet_names: sheetNames })
     .then((res) => {
       _callback(res.data);
     })
-    .catch((err) => checkAuthErr(err, dispatch));
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
 };
 
 // Add one tag to many sheets at once.
-export const bulkAppendTag = (sheetNames, tagValue, _callback) => (dispatch) => {
-  axios
-    .post("/tag/bulk", { sheet_names: sheetNames, tag_value: tagValue })
-    .then((res) => {
-      _callback(res.data);
-    })
-    .catch((err) => checkAuthErr(err, dispatch));
-};
+export const bulkAppendTag =
+  (sheetNames, tagValue, _callback, _onError) => (dispatch) => {
+    axios
+      .post("/tag/bulk", { sheet_names: sheetNames, tag_value: tagValue })
+      .then((res) => {
+        _callback(res.data);
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
+  };
 
 // Remove one tag from many sheets at once.
-export const bulkDeleteTag = (sheetNames, tagValue, _callback) => (dispatch) => {
-  axios
-    .post("/tag/bulk/delete", { sheet_names: sheetNames, tag_value: tagValue })
-    .then((res) => {
-      _callback(res.data);
-    })
-    .catch((err) => checkAuthErr(err, dispatch));
+export const bulkDeleteTag =
+  (sheetNames, tagValue, _callback, _onError) => (dispatch) => {
+    axios
+      .post("/tag/bulk/delete", { sheet_names: sheetNames, tag_value: tagValue })
+      .then((res) => {
+        _callback(res.data);
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
 };

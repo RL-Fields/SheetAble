@@ -70,33 +70,48 @@ function ManageSheetsPage({ bulkDeleteSheets, bulkAppendTag, resetData }) {
       return;
     }
     setWorking(true);
-    bulkDeleteSheets(Array.from(selected), (result) => {
-      setWorking(false);
-      setMessage(
-        `Deleted ${result.succeeded} of ${result.total}${
-          result.failed > 0 ? ` (${result.failed} failed)` : ""
-        }.`
-      );
-      clearSelection();
-      resetData();
-      loadSheets();
-    });
+    bulkDeleteSheets(
+      Array.from(selected),
+      (result) => {
+        setWorking(false);
+        setMessage(
+          `Deleted ${result.succeeded} of ${result.total}${
+            result.failed > 0 ? ` (${result.failed} failed)` : ""
+          }.`
+        );
+        clearSelection();
+        resetData();
+        loadSheets();
+      },
+      (errorMessage) => {
+        setWorking(false);
+        setMessage(`Delete failed: ${errorMessage}`);
+      }
+    );
   };
 
   const handleBulkTag = () => {
     if (selected.size === 0 || tagValue.trim() === "") return;
     setWorking(true);
-    bulkAppendTag(Array.from(selected), tagValue.trim(), (result) => {
-      setWorking(false);
-      setMessage(
-        `Tagged ${result.succeeded} of ${result.total} with "${tagValue.trim()}"${
-          result.failed > 0 ? ` (${result.failed} failed)` : ""
-        }.`
-      );
-      setTagValue("");
-      clearSelection();
-      resetData();
-    });
+    bulkAppendTag(
+      Array.from(selected),
+      tagValue.trim(),
+      (result) => {
+        setWorking(false);
+        setMessage(
+          `Tagged ${result.succeeded} of ${result.total} with "${tagValue.trim()}"${
+            result.failed > 0 ? ` (${result.failed} failed)` : ""
+          }.`
+        );
+        setTagValue("");
+        clearSelection();
+        resetData();
+      },
+      (errorMessage) => {
+        setWorking(false);
+        setMessage(`Tagging failed: ${errorMessage}`);
+      }
+    );
   };
 
   return (
