@@ -36,7 +36,7 @@ def index():
         os.remove(f"./{name}.png") 
         return response
 
-    return send_file(f'./{name}.png', attachment_filename='python.jpg')
+    return send_file(f'./{name}.png', download_name='python.jpg')
 
   
 

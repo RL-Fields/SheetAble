@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	. "github.com/SheetAble/SheetAble/backend/api/config"
 )
@@ -49,6 +50,11 @@ func sendRequest(path string, name string, remoteURL string) error {
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
+		// Without this, a pdf2png container that hangs instead of erroring
+		// (rather than the 500s we've been seeing) would block the whole
+		// upload request indefinitely, same failure mode as the OpenOpus
+		// call below.
+		Timeout: 30 * time.Second,
 	}
 
 	file, err := os.Open(path)

@@ -271,8 +271,16 @@ func (server *Server) UpdateSheet(c *gin.Context) {
 
 }
 
+// openOpusClient has an explicit timeout so a slow/unreachable outbound
+// connection to the OpenOpus API (common on self-hosted boxes with
+// restricted egress) fails fast instead of hanging the whole upload
+// request - the caller already falls back to an "Unknown" composer on
+// any error, so a fast failure here just means that fallback kicks in
+// promptly instead of the request never returning at all.
+var openOpusClient = &http.Client{Timeout: 8 * time.Second}
+
 func getPortraitURL(composerName string) Comp {
-	resp, err := http.Get("https://api.openopus.org/composer/list/search/" + composerName + ".json")
+	resp, err := openOpusClient.Get("https://api.openopus.org/composer/list/search/" + composerName + ".json")
 	if err != nil {
 		fmt.Println(err)
 
