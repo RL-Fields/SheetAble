@@ -411,3 +411,66 @@ export const getUsersData = () => (dispatch) => {
 export const resetData = () => (dispatch) => {
   dispatch({ type: RESET_DATA });
 };
+
+/*
+  Bulk upload many PDFs at once under one shared composer/tags/info text.
+  data: {
+    files: [File, File, ...],
+    composer: "",
+    releaseDate: "1999-12-31",
+    tags: "grade-5,piano",       // comma separated, optional
+    informationText: "",          // optional
+  }
+  _callback(responseData) is called with the backend's per-file results
+  ({ uploaded, failed, total, results: [...] }) on success.
+*/
+export const bulkUploadSheets = (data, _callback) => (dispatch) => {
+  let bodyFormData = new FormData();
+  data.files.forEach((file) => bodyFormData.append("uploadFile", file));
+  bodyFormData.append("composer", data.composer || "");
+  bodyFormData.append("releaseDate", data.releaseDate || "");
+  if (data.tags) bodyFormData.append("tags", data.tags);
+  if (data.informationText)
+    bodyFormData.append("informationText", data.informationText);
+
+  axios
+    .post("/bulk-upload", bodyFormData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    })
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => checkAuthErr(err, dispatch));
+};
+
+// Delete many sheets at once. sheetNames: [safe_sheet_name, ...]
+export const bulkDeleteSheets = (sheetNames, _callback) => (dispatch) => {
+  axios
+    .post("/sheets/bulk-delete", { sheet_names: sheetNames })
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => checkAuthErr(err, dispatch));
+};
+
+// Add one tag to many sheets at once.
+export const bulkAppendTag = (sheetNames, tagValue, _callback) => (dispatch) => {
+  axios
+    .post("/tag/bulk", { sheet_names: sheetNames, tag_value: tagValue })
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => checkAuthErr(err, dispatch));
+};
+
+// Remove one tag from many sheets at once.
+export const bulkDeleteTag = (sheetNames, tagValue, _callback) => (dispatch) => {
+  axios
+    .post("/tag/bulk/delete", { sheet_names: sheetNames, tag_value: tagValue })
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => checkAuthErr(err, dispatch));
+};

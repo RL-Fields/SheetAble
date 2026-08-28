@@ -45,6 +45,15 @@ type Comp struct {
 	Portrait     string `json:"portrait"`
 }
 
+// uploadResult describes the outcome of saving a single sheet, used by both
+// the single-file and bulk-upload endpoints so they report consistently.
+type uploadResult struct {
+	SheetName          string `json:"sheet_name"`
+	Success            bool   `json:"success"`
+	Error              string `json:"error,omitempty"`
+	ThumbnailGenerated bool   `json:"thumbnail_generated"`
+}
+
 func (server *Server) UploadFile(c *gin.Context) {
 	// Check for authentication
 	token := utils.ExtractToken(c)
@@ -64,49 +73,178 @@ func (server *Server) UploadFile(c *gin.Context) {
 		return
 	}
 
-	prePath := path.Join(Config().ConfigPath, "sheets")
-	uploadPath := path.Join(Config().ConfigPath, "sheets/uploaded-sheets")
-	thumbnailPath := path.Join(Config().ConfigPath, "sheets/thumbnails")
+	uploadPath, comp := prepareUploadDestination(server, uploadForm.Composer)
 
-	// Save composer in the database
-	comp := safeComposer(server, uploadForm.Composer)
-
-	utils.CreateDir(prePath)
-	utils.CreateDir(uploadPath)
-	utils.CreateDir(thumbnailPath)
-
-	// Handle case where no composer is given
-	uploadPath = checkComposer(uploadPath, comp)
-
-	// Check if the file already exists
-	sheetName := uploadForm.SheetName
-	releaseDate := uploadForm.ReleaseDate
-
-	fullpath, err := checkFile(uploadPath, sheetName)
-	if fullpath == "" || err != nil {
-		return
-	}
-
-	// Create file
 	theFile, err := uploadForm.File.Open()
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
 	defer theFile.Close()
-	err = createFile(uid, server, fullpath, theFile, comp, sheetName, releaseDate, uploadForm.InformationText)
-	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
+
+	result := uploadOneFile(server, uid, comp, uploadPath, uploadForm.SheetName, uploadForm.ReleaseDate, uploadForm.InformationText, uploadForm.Tags, theFile)
+
+	if !result.Success {
+		// Previously this case (e.g. the file already existing) returned
+		// with no response body at all, leaving the client hanging.
+		utils.DoError(c, http.StatusBadRequest, errors.New(result.Error))
 		return
+	}
+
+	// Return that we have successfully uploaded our file! Kept as a plain
+	// string for backwards compatibility with the existing frontend, which
+	// only checks the HTTP status.
+	c.JSON(http.StatusAccepted, "File uploaded successfully")
+}
+
+// BulkUploadFile accepts multiple PDF files in one multipart request
+// (repeated "uploadFile" fields) and uploads them all under a single shared
+// composer/release date/tags/information text. Sheet names are derived from
+// each file's filename (minus the .pdf extension).
+//
+// Unlike the single-file endpoint, a failure on one file (duplicate name,
+// bad PDF, thumbnail hiccup, ...) does not abort the rest of the batch -
+// every file is attempted and the response reports a per-file result so the
+// UI can show the user exactly what did and didn't make it in.
+func (server *Server) BulkUploadFile(c *gin.Context) {
+	token := utils.ExtractToken(c)
+	uid, err := auth.ExtractTokenID(token, Config().ApiSecret)
+	if err != nil || uid == 0 {
+		c.String(http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad bulk upload request: %v", err))
+		return
+	}
+
+	files := form.File["uploadFile"]
+	if len(files) == 0 {
+		utils.DoError(c, http.StatusBadRequest, errors.New("no files provided (expected one or more 'uploadFile' fields)"))
+		return
+	}
+
+	composer := firstFormValue(form, "composer")
+	releaseDate := firstFormValue(form, "releaseDate")
+	informationText := firstFormValue(form, "informationText")
+	tags := firstFormValue(form, "tags")
+
+	// Resolve/create the composer once for the whole batch instead of once
+	// per file - avoids hammering the OpenOpus API for every single sheet
+	// when uploading e.g. a whole folder of works by the same composer.
+	uploadPath, comp := prepareUploadDestination(server, composer)
+
+	results := make([]uploadResult, 0, len(files))
+	for _, fileHeader := range files {
+		sheetName := strings.TrimSuffix(fileHeader.Filename, path.Ext(fileHeader.Filename))
+
+		openedFile, openErr := fileHeader.Open()
+		if openErr != nil {
+			results = append(results, uploadResult{SheetName: sheetName, Success: false, Error: openErr.Error()})
+			continue
+		}
+
+		result := uploadOneFile(server, uid, comp, uploadPath, sheetName, releaseDate, informationText, tags, openedFile)
+		openedFile.Close()
+		results = append(results, result)
+	}
+
+	succeeded := 0
+	for _, r := range results {
+		if r.Success {
+			succeeded++
+		}
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"uploaded": succeeded,
+		"failed":   len(results) - succeeded,
+		"total":    len(results),
+		"results":  results,
+	})
+}
+
+func firstFormValue(form *multipart.Form, key string) string {
+	values := form.Value[key]
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
+// prepareUploadDestination ensures the sheets/uploaded-sheets/thumbnails
+// directories exist, resolves (and persists) the composer, and returns the
+// destination directory for that composer's files.
+func prepareUploadDestination(server *Server, composer string) (string, Comp) {
+	prePath := path.Join(Config().ConfigPath, "sheets")
+	uploadPath := path.Join(Config().ConfigPath, "sheets/uploaded-sheets")
+	thumbnailPath := path.Join(Config().ConfigPath, "sheets/thumbnails")
+
+	utils.CreateDir(prePath)
+	utils.CreateDir(uploadPath)
+	utils.CreateDir(thumbnailPath)
+
+	comp := safeComposer(server, composer)
+	uploadPath = checkComposer(uploadPath, comp)
+
+	return uploadPath, comp
+}
+
+// uploadOneFile saves a single sheet: validates the destination doesn't
+// already exist, writes the DB row + PDF to disk, applies any shared tags,
+// and kicks off thumbnail generation. A thumbnail failure is reported back
+// via ThumbnailGenerated=false but does NOT fail the upload as a whole -
+// the sheet and PDF are already safely saved at that point.
+func uploadOneFile(server *Server, uid uint32, comp Comp, uploadPath string, sheetName string, releaseDate string, informationText string, tagsCsv string, file multipart.File) uploadResult {
+	result := uploadResult{SheetName: sheetName}
+
+	fullpath, err := checkFile(uploadPath, sheetName)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	err = createFile(uid, server, fullpath, file, comp, sheetName, releaseDate, informationText)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	result.Success = true
+
+	if tags := splitTags(tagsCsv); len(tags) > 0 {
+		safeSheetName := sanitize.Name(Unidecode(sheetName))
+		var sheetModel models.Sheet
+		if sheet, findErr := sheetModel.FindSheetBySafeName(server.DB, safeSheetName); findErr == nil {
+			for _, tag := range tags {
+				sheet.AppendTag(server.DB, tag)
+			}
+		}
 	}
 
 	// Send POST request to python server for creating the thumbnail (first page of pdf as an image)
-	if !utils.RequestToPdfToImage(fullpath, sanitize.Name(Unidecode(sheetName))) {
-		return
-	}
+	result.ThumbnailGenerated = utils.RequestToPdfToImage(fullpath, sanitize.Name(Unidecode(sheetName)))
 
-	// Return that we have successfully uploaded our file!
-	c.JSON(http.StatusAccepted, "File uploaded successfully")
+	return result
+}
+
+// splitTags turns a comma-separated tag string into a clean slice, dropping
+// empty/whitespace-only entries.
+func splitTags(tagsCsv string) []string {
+	if strings.TrimSpace(tagsCsv) == "" {
+		return nil
+	}
+	raw := strings.Split(tagsCsv, ",")
+	tags := make([]string, 0, len(raw))
+	for _, t := range raw {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return tags
 }
 
 func (server *Server) UpdateSheet(c *gin.Context) {

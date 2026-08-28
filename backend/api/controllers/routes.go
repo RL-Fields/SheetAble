@@ -42,6 +42,9 @@ func (server *Server) SetupRouter() {
 
 	// Sheet routes
 	secureApi.POST("/upload", server.UploadFile)
+	secureApi.POST("/bulk-upload", server.BulkUploadFile)
+	secureApi.POST("/sheets/bulk-delete", server.BulkDeleteSheets)
+	secureApi.DELETE("/sheets/bulk", server.BulkDeleteSheets)
 	secureApi.GET("/sheets", server.GetSheetsPage)
 	secureApi.POST("/sheets", server.GetSheetsPage)
 	api.GET("/sheet/thumbnail/:name", server.GetThumbnail)
@@ -61,6 +64,9 @@ func (server *Server) SetupRouter() {
 	secureApi.GET("/tag/sheet/:sheetName", server.AppendTag)
 	secureApi.GET("/tag", server.FindSheetsByTag)
 	secureApi.POST("/tag", server.FindSheetsByTag)
+	secureApi.POST("/tag/bulk", server.BulkAppendTag)
+	secureApi.POST("/tag/bulk/delete", server.BulkDeleteTag)
+	secureApi.DELETE("/tag/bulk", server.BulkDeleteTag)
 
 	// Composer routes
 	secureApi.GET("/composers", server.GetComposersPage)

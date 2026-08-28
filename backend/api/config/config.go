@@ -69,6 +69,13 @@ type ServerConfig struct {
 	ApiSecret     string `env:"API_SECRET"`
 	ServerUrl     string `env:"SERVER_URL"`
 	ConfigPath    string `env:"CONFIG_PATH"`
+	// Pdf2PngUrl is the full URL of the thumbnail-generation microservice's
+	// /createthumbnail endpoint. Self-hosted installs must point this at their
+	// own pdf2png container (e.g. http://pdf2png:5000/createthumbnail) rather
+	// than the upstream SaaS instance, which is not reachable/intended for
+	// arbitrary self-hosted deployments and is why thumbnails silently fail
+	// to generate out of the box.
+	Pdf2PngUrl string `env:"PDF2PNG_URL"`
 
 	Dev  bool `env:"DEV"`
 	Port int  `env:"PORT"`
@@ -85,6 +92,7 @@ func NewConfig() ServerConfig {
 		ApiSecret:     "sheetable",
 		ServerUrl:     "http://localhost:8080",
 		ConfigPath:    "./config/",
+		Pdf2PngUrl:    "http://pdf2png:5000/createthumbnail",
 		Database: DatabaseConfig{
 			Driver: "sqlite",
 		},

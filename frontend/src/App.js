@@ -14,6 +14,7 @@ import Settings from "./Components/SettingsPage/Settings";
 import Sheet from "./Components/Sheet/Sheet";
 import SheetsPage from "./Components/SheetsPage/SheetsPage";
 import UploadPage from "./Components/Upload/UploadPage";
+import ManageSheetsPage from "./Components/ManageSheetsPage/ManageSheetsPage";
 
 // Redux
 import { Provider } from "react-redux";
@@ -94,6 +95,7 @@ function App() {
                   component={Composer}
                 />
                 <Route exact path="/sheets" component={SheetsPage} />
+                <Route exact path="/manage" component={ManageSheetsPage} />
                 <Route exact path="/composers" component={ComposersPage} />
                 <Route exact path="/settings" component={Settings} />
                 <Route exact path="/ping" component={Ping} />

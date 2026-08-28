@@ -13,11 +13,13 @@ import { logoutUser } from "../../Redux/Actions/userActions";
 import { connect } from "react-redux";
 import Modal from "./Modal/Modal";
 import ModalContent from "./Modal/ModalContent";
+import BulkUploadModal from "../Upload/BulkUploadModal";
 import "./FalseVersion.css";
 import axios from "axios";
 
 function SideBar(props) {
   const [uploadModal, setUploadModal] = useState(false);
+  const [bulkUploadModal, setBulkUploadModal] = useState(false);
   const [falseVersion, setFalseVersion] = useState(false);
 
   const { sidebar } = props;
@@ -117,6 +119,27 @@ function SideBar(props) {
               <span className="links_name">Upload</span>
             </p>
             <span className="tooltip">Upload</span>
+          </li>
+          <li>
+            <p onClick={() => setBulkUploadModal(true)} className="cursor">
+              <Modal
+                title="Bulk Upload"
+                onClose={() => setBulkUploadModal(false)}
+                show={bulkUploadModal}
+              >
+                <BulkUploadModal />
+              </Modal>
+              <i className="bx bx-upload"></i>
+              <span className="links_name">Bulk Upload</span>
+            </p>
+            <span className="tooltip">Bulk Upload</span>
+          </li>
+          <li>
+            <a href="/manage">
+              <i className="bx bx-list-check"></i>
+              <span className="links_name">Manage Sheets</span>
+            </a>
+            <span className="tooltip">Manage Sheets</span>
           </li>
           <li>
             <p

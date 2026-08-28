@@ -63,10 +63,15 @@ func (s *Sheet) DeleteSheet(db *gorm.DB, sheetName string) (int64, error) {
 		path.Join(Config().ConfigPath, "sheets/thumbnails", sheet.SafeSheetName+".png"),
 	}
 
-	for _, path := range paths {
-		e := os.Remove(path)
-		if e != nil {
-			log.Fatal(e)
+	for _, filePath := range paths {
+		e := os.Remove(filePath)
+		if e != nil && !os.IsNotExist(e) {
+			// A missing file on disk (e.g. a thumbnail that never got
+			// generated) should not be fatal - it used to call log.Fatal
+			// here, which calls os.Exit(1) and takes down the ENTIRE
+			// server process for every user over one missing file. Log and
+			// keep going instead; the DB row is still what matters most.
+			log.Printf("warning: failed to remove %q while deleting sheet %q: %v", filePath, sheetName, e)
 		}
 	}
 

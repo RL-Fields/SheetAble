@@ -5,10 +5,9 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
 	"os"
 	"path"
 	"strings"
@@ -16,43 +15,54 @@ import (
 	. "github.com/SheetAble/SheetAble/backend/api/config"
 )
 
-// POST request onto pdf creation
-func RequestToPdfToImage(path string, name string) bool {
-	sendRequest(path, name, "https://pdf2png.sheetable.net/createthumbnail")
+// RequestToPdfToImage asks the pdf2png microservice to render the first page
+// of the sheet at `path` into a thumbnail PNG named `name`.png.
+//
+// The service URL comes from Config().Pdf2PngUrl (env PDF2PNG_URL). This used
+// to be hardcoded to the upstream project's own hosted instance
+// (pdf2png.sheetable.net), which self-hosted deployments generally cannot
+// reach/aren't meant to use - that's why thumbnails silently failed to
+// generate. Point PDF2PNG_URL at your own pdf2png container instead, e.g.
+// http://pdf2png:5000/createthumbnail for the bundled docker-compose setup.
+//
+// Returns false (and logs) on any failure instead of panicking, so a
+// hiccup talking to pdf2png no longer takes down the whole upload request.
+func RequestToPdfToImage(filePath string, name string) bool {
+	remoteURL := Config().Pdf2PngUrl
+	if remoteURL == "" {
+		log.Printf("thumbnail generation skipped for %q: PDF2PNG_URL is not configured", name)
+		return false
+	}
 
+	if err := sendRequest(filePath, name, remoteURL); err != nil {
+		log.Printf("thumbnail generation failed for %q via %s: %v", name, remoteURL, err)
+		return false
+	}
 	return true
 }
 
-func sendRequest(path string, name string, remoteURL string) {
-
-	var client *http.Client
-	{
-		// Setup a mocked http client.
-		ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			b, err := httputil.DumpRequest(r, true)
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("%s", b)
-		}))
-
-		defer ts.Close()
-
-		client = ts.Client()
+func sendRequest(path string, name string, remoteURL string) error {
+	client := &http.Client{
+		// Self-signed certs are common for LAN-only reverse proxies in
+		// front of a self-hosted pdf2png instance, so we don't hard-fail
+		// on those. Plain-http docker-network calls are unaffected.
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
 	}
 
-	// Add InsecureSkipVerify because otherwise there would be an error
-	client.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("opening %q: %w", path, err)
+	}
+	defer file.Close()
 
-	// Prepare the reader instances to encode
 	values := map[string]io.Reader{
-		"file": mustOpen(path), // lets assume its this file
+		"file": file,
 		"name": strings.NewReader(name),
 	}
-	err := Upload(client, remoteURL, values, name)
-	if err != nil {
-		panic(err)
-	}
+
+	return Upload(client, remoteURL, values, name)
 }
 
 func Upload(client *http.Client, url string, values map[string]io.Reader, name string) (err error) {
@@ -99,28 +109,21 @@ func Upload(client *http.Client, url string, values map[string]io.Reader, name s
 	if err != nil {
 		return
 	}
+	defer res.Body.Close()
 
 	// Check the response
 	if res.StatusCode != http.StatusOK {
-		err = fmt.Errorf("bad status: %s", res.Status)
+		body, _ := io.ReadAll(res.Body)
+		return fmt.Errorf("bad status: %s (%s)", res.Status, strings.TrimSpace(string(body)))
 	}
 
 	// Save response
-	defer res.Body.Close()
 	out, err := os.Create(path.Join(Config().ConfigPath, "sheets/thumbnails", name+".png"))
 	if err != nil {
 		return
 	}
 	defer out.Close()
-	io.Copy(out, res.Body)
+	_, err = io.Copy(out, res.Body)
 
 	return
-}
-
-func mustOpen(f string) *os.File {
-	r, err := os.Open(f)
-	if err != nil {
-		panic(err)
-	}
-	return r
 }
