@@ -15,6 +15,11 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
 COPY frontend/ ./
+# react-scripts 2.1.8 uses webpack 4, which calls into an MD4 hash routine
+# that Node 17+'s default OpenSSL 3 no longer supports ("digital envelope
+# routines::unsupported"). The legacy provider flag restores the old
+# behaviour just for this build step.
+ENV NODE_OPTIONS=--openssl-legacy-provider
 RUN npm run build
 
 # ---- Stage 2: build the Go backend, embedding the built frontend ----
