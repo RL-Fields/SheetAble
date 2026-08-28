@@ -42,6 +42,11 @@ COPY --from=frontend-builder /frontend/build /app/frontend/build
 RUN go install github.com/GeertJohan/go.rice/rice@latest
 RUN cd api/controllers && rice embed-go
 
+# go-sqlite3's C code uses pread64/pwrite64/off64_t, which musl (Alpine's
+# libc) only declares if _LARGEFILE64_SOURCE is defined - unlike glibc,
+# where it's on by default. Without this, the build fails inside
+# sqlite3-binding.c with "'pread64' undeclared" and friends.
+ENV CGO_CFLAGS="-D_LARGEFILE64_SOURCE"
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main .
 
 # ---- Stage 3: runtime image ----
