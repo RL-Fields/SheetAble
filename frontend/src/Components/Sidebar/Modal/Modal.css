@@ -24,11 +24,21 @@
 
 .modal-content {
   width: 350px;
-  height: 370px;
+  /* Was a fixed height: 370px with no scrolling or overflow handling, so
+     content taller than that (e.g. the bulk upload file list once several
+     files are added) just kept growing downward past the visible box -
+     including the Upload button itself, with no way to scroll to it.
+     max-height + a scrollable modal-body (below) fixes that: the modal
+     grows to fit short content and scrolls internally once it hits the
+     cap, so the button is always reachable. */
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   background-color: #fff;
   transition: all 0.3s ease-in-out;
   transform: translateY(-200px);
   border-radius: 15px;
+  overflow: hidden;
 }
 
 .modal.enter-done .modal-content {
@@ -55,6 +65,8 @@
 .modal-body {
   padding: 10px;
   border-top: 1px solid #eee;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-body .upload {

@@ -127,7 +127,7 @@ function SideBar(props) {
                 onClose={() => setBulkUploadModal(false)}
                 show={bulkUploadModal}
               >
-                <BulkUploadModal />
+                <BulkUploadModal onClose={() => setBulkUploadModal(false)} />
               </Modal>
               <i className="bx bx-upload"></i>
               <span className="links_name">Bulk Upload</span>

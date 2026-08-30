@@ -35,6 +35,21 @@ function BulkUploadModal(props) {
     setFiles(selectedFiles || []);
   };
 
+  // Previously there was no way to actually dismiss this modal after a
+  // bulk upload finished - no Close button, and SideBar never even passed
+  // an onClose prop down to this component, so the popup just sat there
+  // with the finished summary and no obvious way out. Reload on a
+  // successful upload so newly-added sheets show up elsewhere (matching
+  // what the single-sheet upload modal already does), otherwise just
+  // close.
+  const handleClose = () => {
+    if (summary && summary.uploaded > 0) {
+      window.location.reload();
+    } else if (props.onClose) {
+      props.onClose();
+    }
+  };
+
   const sendRequest = () => {
     setUploading(true);
     setSummary(null);
@@ -101,7 +116,7 @@ function BulkUploadModal(props) {
       {summary && (
         <div className="bulk-upload-summary">
           <p>
-            {summary.uploaded} of {summary.total} uploaded
+            ✓ {summary.uploaded} of {summary.total} uploaded
             {summary.failed > 0 ? `, ${summary.failed} failed` : ""}.
           </p>
           {summary.failed > 0 && (
@@ -115,6 +130,14 @@ function BulkUploadModal(props) {
                 ))}
             </ul>
           )}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleClose}
+            style={{ marginTop: "10px" }}
+          >
+            Close
+          </Button>
         </div>
       )}
     </div>
