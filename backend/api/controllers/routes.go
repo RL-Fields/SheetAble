@@ -56,6 +56,7 @@ func (server *Server) SetupRouter() {
 	secureApi.GET("/search/composers/:searchValue", server.SearchComposers)
 	secureApi.PUT("/sheet/:sheetName/info", server.UpdateSheetInformationText)
 	secureApi.POST("/sheet/:sheetName/info", server.UpdateSheetInformationText)
+	secureApi.POST("/sheet/:sheetName/youtube", server.UpdateSheetYoutubeUrl)
 
 	// Sheet annotation routes (shared freehand markup, one set of strokes
 	// per sheet page - not per-user)

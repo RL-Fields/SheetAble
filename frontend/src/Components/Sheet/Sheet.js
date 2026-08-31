@@ -37,6 +37,7 @@ import { useHistory } from "react-router-dom";
 import Modal from "../Sidebar/Modal/Modal";
 import ModalContent from "./Components/ModalContent";
 import InformationCard from "./Components/InformationCard";
+import YoutubeEmbed from "./Components/YoutubeEmbed";
 import { useSheetAnnotation } from "./Components/useSheetAnnotation";
 
 /* Activate global worker for displaying the pdf properly */
@@ -454,6 +455,11 @@ function Sheet({
               </div>
             </div>
             {isDesktop && <hr className="sep_video" />}
+
+            <YoutubeEmbed
+              youtubeUrl={sheet.youtube_url}
+              sheetName={sheet.safe_sheet_name}
+            />
 
             <InformationCard
               infoText={sheet.information_text}

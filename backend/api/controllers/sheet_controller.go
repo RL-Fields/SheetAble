@@ -312,6 +312,32 @@ func (server *Server) UpdateSheetInformationText(c *gin.Context) {
 	c.JSON(http.StatusOK, newSheet)
 }
 
+func (server *Server) UpdateSheetYoutubeUrl(c *gin.Context) {
+	/*
+		This endpoint will set (or clear, with an empty value) the YouTube
+		video linked to a sheet, embedded as a player on its page.
+		Example Request
+		POST /api/sheet/fuer-elise/youtube
+			Body (FormValue):
+			- youtubeUrl: https://www.youtube.com/watch?v=...
+	*/
+
+	sheet := getSheet(server.DB, c)
+	if sheet == nil {
+		return
+	}
+
+	var youtubeForm forms.YoutubeUrlRequest
+	if err := c.ShouldBind(&youtubeForm); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+
+	newSheet := sheet.UpdateSheetYoutubeUrl(server.DB, youtubeForm.YoutubeUrl, sheet)
+
+	c.JSON(http.StatusOK, newSheet)
+}
+
 func getSheet(db *gorm.DB, c *gin.Context) *models.Sheet {
 	
 	// Find a sheet by its name

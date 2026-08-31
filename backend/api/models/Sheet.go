@@ -32,6 +32,12 @@ type Sheet struct {
 	// shape as Tags, just a separate column so the two don't mix in the UI.
 	Instruments     pq.StringArray `gorm:"type:text[]" json:"instruments"`
 	InformationText string         `json:"information_text"`
+	// YoutubeUrl is an optional link to a performance of the piece, shown
+	// as an embedded player on the sheet's page. Stored as whatever URL
+	// was pasted in - the frontend is what extracts the video ID for
+	// embedding, so this stays flexible about which of YouTube's URL
+	// formats (watch?v=, youtu.be/, etc) was given.
+	YoutubeUrl string `json:"youtube_url"`
 }
 
 func (s *Sheet) Prepare() {
@@ -237,6 +243,15 @@ func (s *Sheet) DeleteInstrument(db *gorm.DB, value string) bool {
 
 func (S *Sheet) UpdateSheetInformationText(db *gorm.DB, value string, sheet *Sheet) *Sheet {
 	sheet.InformationText = value
+	db.Save(sheet)
+
+	return sheet
+}
+
+func (S *Sheet) UpdateSheetYoutubeUrl(db *gorm.DB, value string, sheet *Sheet) *Sheet {
+	// value may be "" - that's a deliberate clear (the Remove button), not
+	// treated as a missing/invalid request.
+	sheet.YoutubeUrl = value
 	db.Save(sheet)
 
 	return sheet

@@ -465,6 +465,26 @@ export const editInfoText = (infoText, sheetName, _callback) => (dispatch) => {
     });
 };
 
+// Set (or clear, with "") the YouTube video linked to a sheet.
+export const editYoutubeUrl = (youtubeUrl, sheetName) => (dispatch) => {
+  let bodyFormData = new FormData();
+  bodyFormData.append("youtubeUrl", youtubeUrl);
+
+  axios
+    .post(`/sheet/${sheetName}/youtube`, bodyFormData)
+    .then(() => {
+      store.dispatch(resetData());
+      window.location.reload();
+    })
+    .catch((err) => {
+      if (err.request.status === 401) {
+        store.dispatch(logoutUser());
+        window.location.href = "/login";
+      }
+      console.log(err);
+    });
+};
+
 export const getUsersData = () => (dispatch) => {
   dispatch({ type: LOADING_DATA })
   axios
