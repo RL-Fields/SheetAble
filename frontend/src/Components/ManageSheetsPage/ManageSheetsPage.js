@@ -182,123 +182,130 @@ function ManageSheetsPage({
     <Fragment>
       <SideBar />
       <div className="home_content">
-        <div className="doc_header auto-margin">
-          <span className="doc_sheet">Manage your library</span>
-          <br />
-          <span className="doc_composer">
-            Select sheets to bulk delete or tag them
-          </span>
-        </div>
+        {/* .home_content is a flex row - everything below needs to be a
+            single child of it (like every other page's .sheets-wrapper)
+            so it stacks vertically instead of the header/toolbar/grid
+            fighting for space as flex siblings, which is what was
+            actually breaking scrolling here. */}
+        <div className="sheets-wrapper">
+          <div className="doc_header auto-margin">
+            <span className="doc_sheet">Manage your library</span>
+            <br />
+            <span className="doc_composer">
+              Select sheets to bulk delete or tag them
+            </span>
+          </div>
 
-        <div className="manage-toolbar">
-          <button onClick={selectAll} disabled={loading || sheets.length === 0}>
-            Select all ({sheets.length})
-          </button>
-          <button onClick={clearSelection} disabled={selected.size === 0}>
-            Clear selection
-          </button>
-          <span className="manage-selected-count">
-            {selected.size} selected
-          </span>
+          <div className="manage-toolbar">
+            <button onClick={selectAll} disabled={loading || sheets.length === 0}>
+              Select all ({sheets.length})
+            </button>
+            <button onClick={clearSelection} disabled={selected.size === 0}>
+              Clear selection
+            </button>
+            <span className="manage-selected-count">
+              {selected.size} selected
+            </span>
 
-          <button
-            className="manage-danger"
-            onClick={handleBulkDelete}
-            disabled={selected.size === 0 || working}
-          >
-            Delete selected
-          </button>
+            <button
+              className="manage-danger"
+              onClick={handleBulkDelete}
+              disabled={selected.size === 0 || working}
+            >
+              Delete selected
+            </button>
 
-          <input
-            type="text"
-            placeholder="Tag value"
-            value={tagValue}
-            onChange={(e) => setTagValue(e.target.value)}
-            className="manage-tag-input"
-          />
-          <button
-            onClick={handleBulkTag}
-            disabled={selected.size === 0 || tagValue.trim() === "" || working}
-          >
-            Add tag to selected
-          </button>
+            <input
+              type="text"
+              placeholder="Tag value"
+              value={tagValue}
+              onChange={(e) => setTagValue(e.target.value)}
+              className="manage-tag-input"
+            />
+            <button
+              onClick={handleBulkTag}
+              disabled={selected.size === 0 || tagValue.trim() === "" || working}
+            >
+              Add tag to selected
+            </button>
 
-          <input
-            type="text"
-            placeholder="Composer name"
-            value={composerValue}
-            onChange={(e) => setComposerValue(e.target.value)}
-            className="manage-tag-input"
-          />
-          <button
-            onClick={handleBulkComposer}
-            disabled={
-              selected.size === 0 || composerValue.trim() === "" || working
-            }
-          >
-            Set composer for selected
-          </button>
+            <input
+              type="text"
+              placeholder="Composer name"
+              value={composerValue}
+              onChange={(e) => setComposerValue(e.target.value)}
+              className="manage-tag-input"
+            />
+            <button
+              onClick={handleBulkComposer}
+              disabled={
+                selected.size === 0 || composerValue.trim() === "" || working
+              }
+            >
+              Set composer for selected
+            </button>
 
-          <select
-            value={instrumentValue}
-            onChange={(e) => setInstrumentValue(e.target.value)}
-            className="manage-tag-input"
-          >
-            <option value="">Instrument...</option>
-            {instruments.map((instrument) => (
-              <option key={instrument.safe_name} value={instrument.name}>
-                {instrument.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleBulkInstrument}
-            disabled={selected.size === 0 || instrumentValue === "" || working}
-          >
-            Add instrument to selected
-          </button>
-        </div>
+            <select
+              value={instrumentValue}
+              onChange={(e) => setInstrumentValue(e.target.value)}
+              className="manage-tag-input"
+            >
+              <option value="">Instrument...</option>
+              {instruments.map((instrument) => (
+                <option key={instrument.safe_name} value={instrument.name}>
+                  {instrument.name}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleBulkInstrument}
+              disabled={selected.size === 0 || instrumentValue === "" || working}
+            >
+              Add instrument to selected
+            </button>
+          </div>
 
-        {message && <div className="manage-message">{message}</div>}
+          {message && <div className="manage-message">{message}</div>}
 
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <ul className="all-sheets-container full-height manage-sheets-grid">
-            {sheets.map((sheet) => (
-              <li
-                key={sheet.safe_sheet_name}
-                className={
-                  selected.has(sheet.safe_sheet_name)
-                    ? "li-height manage-selected"
-                    : "li-height"
-                }
-                onClick={() => toggleSelected(sheet.safe_sheet_name)}
-              >
-                <div className="box-container remove_shadow">
-                  <input
-                    type="checkbox"
-                    className="manage-checkbox"
-                    checked={selected.has(sheet.safe_sheet_name)}
-                    onChange={() => toggleSelected(sheet.safe_sheet_name)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <img
-                    className="thumbnail-image"
-                    src={`${axios.defaults.baseURL}/sheet/thumbnail/${sheet.safe_sheet_name}`}
-                    alt="Sheet Thumbnail"
-                  />
-                  <div className="sheet-name-container">
-                    <span className="sheet-name">{sheet.sheet_name}</span>
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <ul className="all-sheets-container full-height manage-sheets-grid">
+              {sheets.map((sheet) => (
+                <li
+                  key={sheet.safe_sheet_name}
+                  className={
+                    selected.has(sheet.safe_sheet_name)
+                      ? "li-height manage-selected"
+                      : "li-height"
+                  }
+                  onClick={() => toggleSelected(sheet.safe_sheet_name)}
+                >
+                  <div className="box-container remove_shadow">
+                    <input
+                      type="checkbox"
+                      className="manage-checkbox"
+                      checked={selected.has(sheet.safe_sheet_name)}
+                      onChange={() => toggleSelected(sheet.safe_sheet_name)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <img
+                      className="thumbnail-image"
+                      src={`${axios.defaults.baseURL}/sheet/thumbnail/${sheet.safe_sheet_name}`}
+                      alt="Sheet Thumbnail"
+                    />
+                    <div className="sheet-name-container">
+                      <span className="sheet-name">{sheet.sheet_name}</span>
+                    </div>
+                    <div className="sheet-composer-container">
+                      <span className="sheet-composer">{sheet.composer}</span>
+                    </div>
                   </div>
-                  <div className="sheet-composer-container">
-                    <span className="sheet-composer">{sheet.composer}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </Fragment>
   );

@@ -1,3 +1,18 @@
+.composer-wrapper .thumbnail-image {
+  /* Was "max-width: none; height: 170px" - that let a portrait with an
+     unusual aspect ratio (some of the Wikipedia photos) render at its full
+     natural width, overflowing past the card's edge into the next one.
+     Constrain both dimensions and crop with object-fit instead. */
+  width: 170px;
+  height: 170px;
+  object-fit: cover;
+}
+
+.composer-wrapper .box-container {
+  width: 170px;
+  min-height: 235px;
+}
+
 .composer-wrapper .rand-piece {
   height: 340px !important;
 }
@@ -6,56 +21,13 @@
   margin-top: 8px !important;
 }
 
-/* A plain table instead of a horizontally-scrolling row of portrait cards -
-   with potentially many composers (and some source photos that don't crop
-   cleanly into a small square), a table scrolls normally with the page and
-   never overflows its box. */
-.composer-table-wrapper {
-  flex: 1;
-  margin-top: 10px;
-  margin-right: 20px;
-}
-
-.composer-table {
+/* The base .all-sheets-container this extends is a single
+   horizontally-scrolling row (fine for a short "recently added" strip
+   elsewhere) - with potentially many composers that made it impossible to
+   scroll down to see them all, since everything sat in one row off to the
+   right instead of wrapping. Wrap onto multiple rows instead, so the
+   page's normal vertical scroll shows every composer. */
+.all-sheets-container.composer-grid.full-height {
+  flex-wrap: wrap;
   width: 100%;
-  border-collapse: collapse;
-  background-color: white;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-}
-
-.composer-table th {
-  text-align: left;
-  padding: 12px 20px;
-  font-family: "Open Sans", sans-serif;
-  font-weight: 600;
-  font-size: 0.85em;
-  color: #707070;
-  background-color: #f2f2f2;
-}
-
-.composer-row {
-  cursor: pointer;
-}
-
-.composer-row:hover {
-  background-color: #f7f7f7;
-}
-
-.composer-row td {
-  padding: 12px 20px;
-  border-top: 1px solid #eee;
-  font-family: "Open Sans", sans-serif;
-}
-
-.composer-row-name {
-  color: #404040;
-  font-weight: 400;
-}
-
-.composer-row-epoch {
-  color: grey;
-  font-size: small;
-  font-weight: 300;
 }

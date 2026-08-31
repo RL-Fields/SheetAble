@@ -52,7 +52,9 @@
    elsewhere) - that made it impossible to scroll down through a full
    library here, since everything sat in one row off to the right instead
    of wrapping. Wrap onto multiple rows instead, so the page's normal
-   vertical scroll shows every sheet. */
+   vertical scroll shows every sheet. (The other half of this bug was
+   structural, not CSS - see the .sheets-wrapper added around this whole
+   page in ManageSheetsPage.js.) */
 .all-sheets-container.manage-sheets-grid.full-height {
   flex-wrap: wrap;
   width: 100%;
