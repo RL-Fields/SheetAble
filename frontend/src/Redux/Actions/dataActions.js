@@ -500,6 +500,40 @@ export const bulkAppendTag =
       });
   };
 
+// Get the saved annotation strokes for one page of a sheet. Annotations
+// are shared - not per-user - so this is just "what's currently saved for
+// this page," same for every viewer.
+export const getAnnotations = (sheetName, pageNumber, _callback) => (dispatch) => {
+  axios
+    .get(`/sheet/${sheetName}/annotations/${pageNumber}`)
+    .then((res) => {
+      _callback(res.data.strokes || []);
+    })
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      // A load failure shouldn't block viewing the sheet - just treat it
+      // as "no annotations to show" and let the user keep going.
+      _callback([]);
+    });
+};
+
+// Save (replace) the annotation strokes for one page of a sheet - the
+// complete current stroke list for that page, not a diff against what's
+// stored. Called once per explicit Save click, matching the "Save button,
+// not autosave" behaviour.
+export const saveAnnotation =
+  (sheetName, pageNumber, strokes, _callback, _onError) => (dispatch) => {
+    axios
+      .put(`/sheet/${sheetName}/annotations/${pageNumber}`, { strokes })
+      .then(() => {
+        _callback();
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
+  };
+
 // Remove one tag from many sheets at once.
 export const bulkDeleteTag =
   (sheetNames, tagValue, _callback, _onError) => (dispatch) => {

@@ -27,6 +27,87 @@
   margin-top: 12px;
 }
 
+/* Annotation layer: a wrapper that shrink-wraps to the PDF page's actual
+   rendered size (display: inline-block), so the absolutely-positioned
+   canvas on top of it lines up pixel-for-pixel with the page regardless
+   of what size react-pdf/CSS decide to render it at. */
+.pdf-page-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.annotation-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  /* Ignore clicks/drags unless annotate mode is actually on, so normal
+     page interaction underneath isn't hijacked while just viewing. */
+  pointer-events: none;
+}
+
+.annotation-canvas.drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.annotation-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: 20px;
+  margin-top: 14px;
+  max-width: 560px;
+}
+
+.annotate-toggle,
+.tool-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #f2f2f2;
+  font-family: "Open Sans", sans-serif;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.annotate-toggle.active,
+.tool-btn.active {
+  background: #4f40b3;
+  color: white;
+}
+
+.tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-swatch.active {
+  border-color: #1d1b31;
+}
+
+.save-btn {
+  background: #2b235f;
+  color: white;
+}
+
+.save-btn:disabled {
+  background: #bbb;
+  color: white;
+}
+
 .doc_wrapper:hover .page_controls {
   opacity: 1;
 }

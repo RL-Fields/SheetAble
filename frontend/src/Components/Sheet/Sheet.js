@@ -37,6 +37,7 @@ import { useHistory } from "react-router-dom";
 import Modal from "../Sidebar/Modal/Modal";
 import ModalContent from "./Components/ModalContent";
 import InformationCard from "./Components/InformationCard";
+import { useSheetAnnotation } from "./Components/useSheetAnnotation";
 
 /* Activate global worker for displaying the pdf properly */
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
@@ -167,6 +168,13 @@ function Sheet({
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
 
+  // Freehand annotation for the currently-viewed page. Lives here (rather
+  // than inside a child component) because both the toolbar and the
+  // canvas overlay need the same state, and they render in two different
+  // places in the tree below (the toolbar above the page, the canvas
+  // stacked on top of it).
+  const annotation = useSheetAnnotation(safeSheetName, pageNumber);
+
   function onDocumentLoadSuccess({ numPages }) {
     setNumPages(numPages);
     setPageNumber(1);
@@ -176,13 +184,25 @@ function Sheet({
     setPageNumber((prevPageNumber) => prevPageNumber + offset);
   }
 
+  // Saving is explicit (a Save button), so unsaved strokes are silently
+  // lost on navigation unless we check first - confirm rather than losing
+  // someone's work with no warning.
+  function confirmDiscardIfDirty() {
+    if (!annotation.dirty) return true;
+    return window.confirm(
+      "You have unsaved annotations on this page. Discard them and continue?"
+    );
+  }
+
   function previousPage(e) {
     e.target.blur();
+    if (!confirmDiscardIfDirty()) return;
     changePage(-1);
   }
 
   function nextPage(e) {
     e.target.blur();
+    if (!confirmDiscardIfDirty()) return;
     changePage(1);
   }
 
@@ -231,12 +251,102 @@ function Sheet({
               <span className="doc_composer">{sheet.composer}</span>
             </div>
 
+            <div className="annotation-toolbar">
+              <button
+                className={
+                  annotation.annotateMode
+                    ? "annotate-toggle active"
+                    : "annotate-toggle"
+                }
+                onClick={() => annotation.setAnnotateMode(!annotation.annotateMode)}
+              >
+                {annotation.annotateMode ? "Done Annotating" : "✏ Annotate"}
+              </button>
+              {annotation.annotateMode && (
+                <Fragment>
+                  <button
+                    className={
+                      annotation.tool === "pen" ? "tool-btn active" : "tool-btn"
+                    }
+                    onClick={() => annotation.setTool("pen")}
+                  >
+                    Pen
+                  </button>
+                  <button
+                    className={
+                      annotation.tool === "highlighter"
+                        ? "tool-btn active"
+                        : "tool-btn"
+                    }
+                    onClick={() => annotation.setTool("highlighter")}
+                  >
+                    Highlighter
+                  </button>
+                  {annotation.colors.map((c) => (
+                    <button
+                      key={c}
+                      className={
+                        annotation.color === c
+                          ? "color-swatch active"
+                          : "color-swatch"
+                      }
+                      style={{ backgroundColor: c }}
+                      onClick={() => annotation.setColor(c)}
+                      title={c}
+                    />
+                  ))}
+                  <button
+                    className="tool-btn"
+                    onClick={annotation.undo}
+                    disabled={annotation.strokes.length === 0}
+                  >
+                    Undo
+                  </button>
+                  <button
+                    className="tool-btn"
+                    onClick={annotation.clearPage}
+                    disabled={annotation.strokes.length === 0}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    className="tool-btn save-btn"
+                    onClick={annotation.save}
+                    disabled={!annotation.dirty || annotation.saving}
+                  >
+                    {annotation.saving
+                      ? "Saving..."
+                      : annotation.dirty
+                      ? "Save"
+                      : "Saved"}
+                  </button>
+                </Fragment>
+              )}
+            </div>
+
             <div className="noselect document">
               <Document
                 file={pdf === undefined ? pdfRequest() : pdf}
                 onLoadSuccess={onDocumentLoadSuccess}
               >
-                <Page pageNumber={pageNumber} width={isDesktop ? 540 : 430} />
+                <div className="pdf-page-wrapper" ref={annotation.containerRef}>
+                  <Page pageNumber={pageNumber} width={isDesktop ? 540 : 430} />
+                  <canvas
+                    ref={annotation.canvasRef}
+                    className={
+                      annotation.annotateMode
+                        ? "annotation-canvas drawing"
+                        : "annotation-canvas"
+                    }
+                    onMouseDown={annotation.startStroke}
+                    onMouseMove={annotation.continueStroke}
+                    onMouseUp={annotation.endStroke}
+                    onMouseLeave={annotation.endStroke}
+                    onTouchStart={annotation.startStroke}
+                    onTouchMove={annotation.continueStroke}
+                    onTouchEnd={annotation.endStroke}
+                  />
+                </div>
               </Document>
             </div>
 

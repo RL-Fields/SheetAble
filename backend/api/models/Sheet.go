@@ -79,6 +79,13 @@ func (s *Sheet) DeleteSheet(db *gorm.DB, sheetName string) (int64, error) {
 		CheckAndDeleteUnknownComposer(db)
 	}
 
+	// Clean up any saved annotations too, so deleting a sheet doesn't leave
+	// orphaned rows with no sheet to belong to. Non-fatal: a failure here
+	// shouldn't block the actual sheet deletion.
+	if err := DeleteAnnotationsForSheet(db, sheet.SafeSheetName); err != nil {
+		log.Printf("warning: failed to remove annotations while deleting sheet %q: %v", sheetName, err)
+	}
+
 	db = db.Model(&Sheet{}).Where("safe_sheet_name = ?", sheetName).Take(&Sheet{}).Delete(&Sheet{})
 
 	if db.Error != nil {

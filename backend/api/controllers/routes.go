@@ -57,6 +57,11 @@ func (server *Server) SetupRouter() {
 	secureApi.PUT("/sheet/:sheetName/info", server.UpdateSheetInformationText)
 	secureApi.POST("/sheet/:sheetName/info", server.UpdateSheetInformationText)
 
+	// Sheet annotation routes (shared freehand markup, one set of strokes
+	// per sheet page - not per-user)
+	secureApi.GET("/sheet/:sheetName/annotations/:pageNumber", server.GetPageAnnotation)
+	secureApi.PUT("/sheet/:sheetName/annotations/:pageNumber", server.SavePageAnnotation)
+
 	// Sheet tag routes
 	secureApi.DELETE("/tag/sheet/:sheetName", server.DeleteTag)
 	secureApi.POST("/tag/delete/sheet/:sheetName", server.DeleteTag)

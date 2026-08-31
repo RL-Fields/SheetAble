@@ -77,7 +77,7 @@ func (server *Server) Initialize() {
 	server.DB.LogMode(false)
 
 	// Migrate DBs
-	server.DB.AutoMigrate(&models.User{}, &models.Sheet{})
+	server.DB.AutoMigrate(&models.User{}, &models.Sheet{}, &models.SheetAnnotation{})
 
 	server.SetupRouter()
 }
