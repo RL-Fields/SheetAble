@@ -8,9 +8,9 @@ import {
   bulkAppendTag,
   bulkSetComposer,
   bulkAddInstrument,
+  getInstrumentsList,
   resetData,
 } from "../../Redux/Actions/dataActions";
-import { INSTRUMENTS } from "../../Utils/instruments";
 
 import "./ManageSheetsPage.css";
 
@@ -26,6 +26,7 @@ function ManageSheetsPage({
   bulkAppendTag,
   bulkSetComposer,
   bulkAddInstrument,
+  getInstrumentsList,
   resetData,
 }) {
   const [sheets, setSheets] = useState([]);
@@ -34,6 +35,7 @@ function ManageSheetsPage({
   const [tagValue, setTagValue] = useState("");
   const [composerValue, setComposerValue] = useState("");
   const [instrumentValue, setInstrumentValue] = useState("");
+  const [instruments, setInstruments] = useState([]);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -54,6 +56,8 @@ function ManageSheetsPage({
   useEffect(() => {
     document.title = "SheetAble - Manage Sheets";
     loadSheets();
+    getInstrumentsList((data) => setInstruments(data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleSelected = (safeSheetName) => {
@@ -241,9 +245,9 @@ function ManageSheetsPage({
             className="manage-tag-input"
           >
             <option value="">Instrument...</option>
-            {INSTRUMENTS.map((instrument) => (
-              <option key={instrument} value={instrument}>
-                {instrument}
+            {instruments.map((instrument) => (
+              <option key={instrument.safe_name} value={instrument.name}>
+                {instrument.name}
               </option>
             ))}
           </select>
@@ -305,6 +309,7 @@ const mapActionsToProps = {
   bulkAppendTag,
   bulkSetComposer,
   bulkAddInstrument,
+  getInstrumentsList,
   resetData,
 };
 

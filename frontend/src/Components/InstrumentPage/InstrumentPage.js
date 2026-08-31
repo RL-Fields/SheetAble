@@ -8,8 +8,8 @@ import "../TagsPage/TagsPage.css";
 import SheetBox from "../SheetsPage/Components/SheetBox";
 
 // One instrument's filtered sheet list - the same shape as TagsPage, since
-// an instrument is really just a tag drawn from a fixed vocabulary rather
-// than typed freely (see Utils/instruments.js).
+// an instrument is really just a tag drawn from the backend-managed
+// instrument list (see the Instruments tab) rather than typed freely.
 function InstrumentPage({ getInstrumentSheets }) {
   const { instrumentName } = useParams();
   const decoded = decodeURIComponent(instrumentName);

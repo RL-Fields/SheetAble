@@ -1,20 +1,28 @@
 import Button from "@material-ui/core/Button";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import {
   addInstrument,
   deleteInstrument,
+  getInstrumentsList,
 } from "../../../Redux/Actions/dataActions";
-import { INSTRUMENTS } from "../../../Utils/instruments";
 
 /*
-  A checkbox list rather than free text - instrument is a fixed vocabulary
-  (see Utils/instruments.js) so the browse tab never ends up with
-  near-duplicate entries. Checking/unchecking fires immediately (matches
-  how the rest of this app's small edit forms - like tags - already work,
-  reloading the page on each change) rather than needing a separate Save.
+  A checkbox list rather than free text - instrument is chosen from the
+  backend-managed master list (see the Instruments tab, which can add/
+  remove entries) so the browse tab never ends up with near-duplicate
+  entries. Checking/unchecking fires immediately (matches how the rest of
+  this app's small edit forms - like tags - already work, reloading the
+  page on each change) rather than needing a separate Save.
 */
 function ModalContentInstrument(props) {
+  const [instruments, setInstruments] = useState([]);
+
+  useEffect(() => {
+    props.getInstrumentsList((data) => setInstruments(data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const toggle = (instrument, checked) => {
     if (checked) {
       props.addInstrument(instrument, props.sheetName);
@@ -26,17 +34,22 @@ function ModalContentInstrument(props) {
   return (
     <div className="add_tag delete_tag">
       <form noValidate autoComplete="off">
-        {INSTRUMENTS.map((instrument) => (
+        {instruments.length === 0 && (
+          <p>
+            No instruments set up yet - add some from the Instruments tab.
+          </p>
+        )}
+        {instruments.map((instrument) => (
           <label
-            key={instrument}
+            key={instrument.safe_name}
             style={{ display: "block", textAlign: "left", padding: "2px 0" }}
           >
             <input
               type="checkbox"
-              checked={props.instruments.includes(instrument)}
-              onChange={(e) => toggle(instrument, e.target.checked)}
+              checked={props.instruments.includes(instrument.name)}
+              onChange={(e) => toggle(instrument.name, e.target.checked)}
             />{" "}
-            {instrument}
+            {instrument.name}
           </label>
         ))}
       </form>
@@ -52,6 +65,7 @@ function ModalContentInstrument(props) {
 const mapActionsToProps = {
   addInstrument,
   deleteInstrument,
+  getInstrumentsList,
 };
 
 const mapStateToProps = (state) => ({});

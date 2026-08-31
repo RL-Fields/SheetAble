@@ -77,7 +77,12 @@ func (server *Server) Initialize() {
 	server.DB.LogMode(false)
 
 	// Migrate DBs
-	server.DB.AutoMigrate(&models.User{}, &models.Sheet{}, &models.SheetAnnotation{})
+	server.DB.AutoMigrate(&models.User{}, &models.Sheet{}, &models.SheetAnnotation{}, &models.Instrument{})
+
+	// Populate the master instrument list on first run (no-op if it's
+	// already been seeded, or if every instrument has since been deleted
+	// on purpose)
+	models.SeedDefaultInstruments(server.DB)
 
 	server.SetupRouter()
 }

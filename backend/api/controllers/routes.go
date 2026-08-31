@@ -74,11 +74,17 @@ func (server *Server) SetupRouter() {
 	secureApi.POST("/tag/bulk/delete", server.BulkDeleteTag)
 	secureApi.DELETE("/tag/bulk", server.BulkDeleteTag)
 
-	// Sheet instrument routes (fixed vocabulary chosen on the frontend - a
-	// sheet can carry more than one, same shape as tags but kept separate)
+	// Sheet instrument routes (a sheet can carry more than one, drawn from
+	// the master list below - same shape as tags but kept separate)
 	secureApi.POST("/instrument/sheet/:sheetName", server.AppendInstrument)
 	secureApi.POST("/instrument/delete/sheet/:sheetName", server.DeleteInstrument)
 	secureApi.POST("/instrument", server.FindSheetsByInstrument)
+
+	// Master instrument list (add/remove instruments from the list itself,
+	// as opposed to tagging one sheet with an existing instrument above)
+	secureApi.GET("/instruments/list", server.GetInstrumentsList)
+	secureApi.POST("/instruments/list", server.AddInstrumentToList)
+	secureApi.POST("/instruments/list/delete", server.DeleteInstrumentFromList)
 
 	// Bulk composer/instrument routes (Manage Sheets page)
 	secureApi.POST("/composer/bulk", server.BulkSetComposer)

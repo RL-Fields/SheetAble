@@ -1,18 +1,61 @@
-.composer-wrapper .thumbnail-image {
-  max-width: none;
-  height: 170px;
-}
-
-.composer-wrapper .box-container {
-  width: 170px;
-
-  min-height: 235px;
-}
-
 .composer-wrapper .rand-piece {
   height: 340px !important;
 }
 
 .composer-wrapper .bubbly-button {
   margin-top: 8px !important;
+}
+
+/* A plain table instead of a horizontally-scrolling row of portrait cards -
+   with potentially many composers (and some source photos that don't crop
+   cleanly into a small square), a table scrolls normally with the page and
+   never overflows its box. */
+.composer-table-wrapper {
+  flex: 1;
+  margin-top: 10px;
+  margin-right: 20px;
+}
+
+.composer-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.composer-table th {
+  text-align: left;
+  padding: 12px 20px;
+  font-family: "Open Sans", sans-serif;
+  font-weight: 600;
+  font-size: 0.85em;
+  color: #707070;
+  background-color: #f2f2f2;
+}
+
+.composer-row {
+  cursor: pointer;
+}
+
+.composer-row:hover {
+  background-color: #f7f7f7;
+}
+
+.composer-row td {
+  padding: 12px 20px;
+  border-top: 1px solid #eee;
+  font-family: "Open Sans", sans-serif;
+}
+
+.composer-row-name {
+  color: #404040;
+  font-weight: 400;
+}
+
+.composer-row-epoch {
+  color: grey;
+  font-size: small;
+  font-weight: 300;
 }

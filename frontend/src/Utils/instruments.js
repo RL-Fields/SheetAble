@@ -1,7 +1,7 @@
-// Fixed vocabulary for the Instrument browse tab - a sheet can be tagged
-// with more than one (e.g. a duet), same shape as the existing free-text
-// Tags feature, but picked from this list rather than typed, so the browse
-// page never ends up with near-duplicate entries ("Violin" vs "violin").
+// Superseded: the instrument list now lives on the backend (models.Instrument,
+// seeded once from these same defaults) so it can be edited from the
+// Instruments tab instead of being fixed in code. Nothing imports this file
+// any more - kept only as a record of the original defaults.
 export const INSTRUMENTS = [
   "Piano",
   "Guitar",

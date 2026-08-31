@@ -47,6 +47,17 @@
   font-size: 0.9rem;
 }
 
+/* The base .all-sheets-container this grid extends is a single
+   horizontally-scrolling row (fine for a short "recently added" strip
+   elsewhere) - that made it impossible to scroll down through a full
+   library here, since everything sat in one row off to the right instead
+   of wrapping. Wrap onto multiple rows instead, so the page's normal
+   vertical scroll shows every sheet. */
+.all-sheets-container.manage-sheets-grid.full-height {
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .manage-sheets-grid li {
   cursor: pointer;
   position: relative;

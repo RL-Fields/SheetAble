@@ -128,18 +128,28 @@ function ComposersPage({
                 {portraitMessage && <span> {portraitMessage}</span>}
               </div>
               <div className="middle-part-container">
-                <ul className="all-sheets-container full-height">
-                  {composerPages[composerPage] === undefined
-                    ? getData()
-                    : composerPages[composerPage].map((composer) => {
-                        return (
-                          <ComposerBox
-                            composer={composer}
-                            key={composer.name}
-                          />
-                        );
-                      })}
-                </ul>
+                <div className="composer-table-wrapper auto-margin">
+                  <table className="composer-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Epoch</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {composerPages[composerPage] === undefined
+                        ? getData()
+                        : composerPages[composerPage].map((composer) => {
+                            return (
+                              <ComposerBox
+                                composer={composer}
+                                key={composer.name}
+                              />
+                            );
+                          })}
+                    </tbody>
+                  </table>
+                </div>
                 <RandomComposerSelection
                   composerPages={composerPages}
                   page={composerPage}

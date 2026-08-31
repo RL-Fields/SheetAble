@@ -672,6 +672,52 @@ export const backfillComposerPortraits = (_callback, _onError) => (dispatch) => 
     });
 };
 
+// The master instrument list (as opposed to which instruments a given
+// sheet has - see getInstrumentSheets/addInstrument/deleteInstrument above).
+// Backs the Instruments browse tab, the per-sheet checkbox list, and the
+// bulk-editor dropdown, so add/remove here is reflected everywhere at once.
+export const getInstrumentsList = (_callback, _onError) => (dispatch) => {
+  axios
+    .get("/instruments/list")
+    .then((res) => {
+      _callback(res.data || []);
+    })
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
+};
+
+export const addInstrumentToList = (name, _callback, _onError) => (dispatch) => {
+  let bodyFormData = new FormData();
+  bodyFormData.append("name", name);
+
+  axios
+    .post("/instruments/list", bodyFormData)
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
+};
+
+export const deleteInstrumentFromList = (name, _callback, _onError) => (dispatch) => {
+  let bodyFormData = new FormData();
+  bodyFormData.append("name", name);
+
+  axios
+    .post("/instruments/list/delete", bodyFormData)
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
+};
+
 // Remove one instrument from many sheets at once.
 export const bulkDeleteInstrument =
   (sheetNames, instrumentValue, _callback, _onError) => (dispatch) => {

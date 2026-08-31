@@ -13,6 +13,7 @@ import (
 	"github.com/SheetAble/SheetAble/backend/api/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
+	"github.com/kennygrant/sanitize"
 )
 
 /*
@@ -202,8 +203,9 @@ func (server *Server) FindSheetsByTag(c *gin.Context) {
 func (server *Server) AppendInstrument(c *gin.Context) {
 	/*
 		This endpoint will tag a sheet with an instrument, chosen from the
-		fixed instrument list the frontend offers (nothing enforces that
-		list server-side - it's stored as a plain string, same as tags).
+		master instrument list (nothing enforces that list server-side here
+		- it's stored as a plain string, same as tags; see
+		GetInstrumentsList/AddInstrumentToList for the list itself).
 		Example Request
 		POST /api/instrument/sheet/fuer-elise
 			Body (FormValue):
@@ -281,6 +283,83 @@ func (server *Server) FindSheetsByInstrument(c *gin.Context) {
 	sheets := models.FindSheetByInstrument(server.DB, instrumentForm.InstrumentValue)
 
 	c.JSON(http.StatusOK, sheets)
+}
+
+func (server *Server) GetInstrumentsList(c *gin.Context) {
+	/*
+		Returns the master list of instruments (used to build the checkbox
+		list, bulk-editor dropdown, and the Instruments browse tab), sorted
+		alphabetically.
+		Example Request
+		GET /api/instruments/list
+	*/
+
+	instruments, err := models.GetAllInstruments(server.DB)
+	if err != nil {
+		utils.DoError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, instruments)
+}
+
+func (server *Server) AddInstrumentToList(c *gin.Context) {
+	/*
+		This endpoint adds a new instrument to the master list.
+		Example Request
+		POST /api/instruments/list
+			Body (FormValue):
+			- name: Kalimba
+	*/
+
+	var form forms.InstrumentListRequest
+	if err := c.ShouldBind(&form); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+	if form.Name == "" {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("No name given"))
+		return
+	}
+
+	instrument := &models.Instrument{Name: form.Name}
+	saved, err := instrument.SaveInstrument(server.DB)
+	if err != nil {
+		utils.DoError(c, http.StatusBadRequest, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, saved)
+}
+
+func (server *Server) DeleteInstrumentFromList(c *gin.Context) {
+	/*
+		This endpoint removes an instrument from the master list. It does not
+		touch any sheet that already has that instrument set - it only stops
+		it being offered/browsable going forward.
+		Example Request
+		POST /api/instruments/list/delete
+			Body (FormValue):
+			- name: Kalimba
+	*/
+
+	var form forms.InstrumentListRequest
+	if err := c.ShouldBind(&form); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+	if form.Name == "" {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("No name given"))
+		return
+	}
+
+	instrument := &models.Instrument{}
+	if err := instrument.DeleteInstrument(server.DB, sanitize.Name(form.Name)); err != nil {
+		utils.DoError(c, http.StatusNotFound, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, "Instrument: ["+form.Name+"] was successfully removed from the list")
 }
 
 func (server *Server) UpdateSheetInformationText(c *gin.Context) {
