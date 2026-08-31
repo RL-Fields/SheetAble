@@ -6,8 +6,11 @@ import SideBar from "../Sidebar/SideBar";
 import {
   bulkDeleteSheets,
   bulkAppendTag,
+  bulkSetComposer,
+  bulkAddInstrument,
   resetData,
 } from "../../Redux/Actions/dataActions";
+import { INSTRUMENTS } from "../../Utils/instruments";
 
 import "./ManageSheetsPage.css";
 
@@ -18,11 +21,19 @@ import "./ManageSheetsPage.css";
   clicking a sheet there still opens it, rather than fighting over what a
   click means.
 */
-function ManageSheetsPage({ bulkDeleteSheets, bulkAppendTag, resetData }) {
+function ManageSheetsPage({
+  bulkDeleteSheets,
+  bulkAppendTag,
+  bulkSetComposer,
+  bulkAddInstrument,
+  resetData,
+}) {
   const [sheets, setSheets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(new Set());
   const [tagValue, setTagValue] = useState("");
+  const [composerValue, setComposerValue] = useState("");
+  const [instrumentValue, setInstrumentValue] = useState("");
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -114,6 +125,55 @@ function ManageSheetsPage({ bulkDeleteSheets, bulkAppendTag, resetData }) {
     );
   };
 
+  const handleBulkComposer = () => {
+    if (selected.size === 0 || composerValue.trim() === "") return;
+    setWorking(true);
+    bulkSetComposer(
+      Array.from(selected),
+      composerValue.trim(),
+      (result) => {
+        setWorking(false);
+        setMessage(
+          `Set composer to "${composerValue.trim()}" for ${result.succeeded} of ${
+            result.total
+          }${result.failed > 0 ? ` (${result.failed} failed)` : ""}.`
+        );
+        setComposerValue("");
+        clearSelection();
+        resetData();
+        loadSheets();
+      },
+      (errorMessage) => {
+        setWorking(false);
+        setMessage(`Setting composer failed: ${errorMessage}`);
+      }
+    );
+  };
+
+  const handleBulkInstrument = () => {
+    if (selected.size === 0 || instrumentValue === "") return;
+    setWorking(true);
+    bulkAddInstrument(
+      Array.from(selected),
+      instrumentValue,
+      (result) => {
+        setWorking(false);
+        setMessage(
+          `Added "${instrumentValue}" to ${result.succeeded} of ${result.total}${
+            result.failed > 0 ? ` (${result.failed} failed)` : ""
+          }.`
+        );
+        setInstrumentValue("");
+        clearSelection();
+        resetData();
+      },
+      (errorMessage) => {
+        setWorking(false);
+        setMessage(`Adding instrument failed: ${errorMessage}`);
+      }
+    );
+  };
+
   return (
     <Fragment>
       <SideBar />
@@ -157,6 +217,41 @@ function ManageSheetsPage({ bulkDeleteSheets, bulkAppendTag, resetData }) {
             disabled={selected.size === 0 || tagValue.trim() === "" || working}
           >
             Add tag to selected
+          </button>
+
+          <input
+            type="text"
+            placeholder="Composer name"
+            value={composerValue}
+            onChange={(e) => setComposerValue(e.target.value)}
+            className="manage-tag-input"
+          />
+          <button
+            onClick={handleBulkComposer}
+            disabled={
+              selected.size === 0 || composerValue.trim() === "" || working
+            }
+          >
+            Set composer for selected
+          </button>
+
+          <select
+            value={instrumentValue}
+            onChange={(e) => setInstrumentValue(e.target.value)}
+            className="manage-tag-input"
+          >
+            <option value="">Instrument...</option>
+            {INSTRUMENTS.map((instrument) => (
+              <option key={instrument} value={instrument}>
+                {instrument}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleBulkInstrument}
+            disabled={selected.size === 0 || instrumentValue === "" || working}
+          >
+            Add instrument to selected
           </button>
         </div>
 
@@ -208,6 +303,8 @@ function ManageSheetsPage({ bulkDeleteSheets, bulkAppendTag, resetData }) {
 const mapActionsToProps = {
   bulkDeleteSheets,
   bulkAppendTag,
+  bulkSetComposer,
+  bulkAddInstrument,
   resetData,
 };
 

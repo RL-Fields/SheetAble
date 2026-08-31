@@ -13,6 +13,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -50,6 +51,7 @@ type Comp struct {
 type uploadResult struct {
 	SheetName          string `json:"sheet_name"`
 	Success            bool   `json:"success"`
+	Skipped            bool   `json:"skipped,omitempty"`
 	Error              string `json:"error,omitempty"`
 	ThumbnailGenerated bool   `json:"thumbnail_generated"`
 }
@@ -152,15 +154,19 @@ func (server *Server) BulkUploadFile(c *gin.Context) {
 	}
 
 	succeeded := 0
+	skipped := 0
 	for _, r := range results {
 		if r.Success {
 			succeeded++
+		} else if r.Skipped {
+			skipped++
 		}
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"uploaded": succeeded,
-		"failed":   len(results) - succeeded,
+		"skipped":  skipped,
+		"failed":   len(results) - succeeded - skipped,
 		"total":    len(results),
 		"results":  results,
 	})
@@ -200,8 +206,24 @@ func prepareUploadDestination(server *Server, composer string) (string, Comp) {
 func uploadOneFile(server *Server, uid uint32, comp Comp, uploadPath string, sheetName string, releaseDate string, informationText string, tagsCsv string, file multipart.File) uploadResult {
 	result := uploadResult{SheetName: sheetName}
 
+	// Check for an existing DB row up front (not just a PDF already on
+	// disk, which checkFile below covers) - re-uploading the same folder
+	// twice, or a batch that overlaps with what's already in the library,
+	// should just be skipped rather than attempted, which is what used to
+	// leave duplicate-looking sheets in the library with no PDF behind
+	// them: SaveSheet succeeding is what actually creates the entry, and it
+	// happens BEFORE the PDF gets written to disk (see createFile below).
+	safeSheetName := sanitize.Name(Unidecode(sheetName))
+	var existing models.Sheet
+	if _, err := existing.FindSheetBySafeName(server.DB, safeSheetName); err == nil {
+		result.Skipped = true
+		result.Error = "a sheet with this name already exists - skipped"
+		return result
+	}
+
 	fullpath, err := checkFile(uploadPath, sheetName)
 	if err != nil {
+		result.Skipped = true
 		result.Error = err.Error()
 		return result
 	}
@@ -287,7 +309,7 @@ func getPortraitURL(composerName string) Comp {
 		return Comp{
 			CompleteName: composerName,
 			SafeName:     sanitize.Name(Unidecode(composerName)),
-			Portrait:     "https://icon-library.com/images/unknown-person-icon/unknown-person-icon-4.jpg",
+			Portrait:     unknownPortraitURL,
 			Epoch:        "Unknown",
 		}
 	}
@@ -310,12 +332,64 @@ func getPortraitURL(composerName string) Comp {
 		return Comp{
 			CompleteName: composerName,
 			SafeName:     sanitize.Name(Unidecode(composerName)),
-			Portrait:     "https://icon-library.com/images/unknown-person-icon/unknown-person-icon-4.jpg",
+			Portrait:     unknownPortraitURL,
 			Epoch:        "Unknown",
 		}
 	}
 
 	return composers[0]
+}
+
+// unknownPortraitURL is the generic placeholder icon used whenever no real
+// portrait could be resolved for a composer (from Wikipedia or otherwise).
+const unknownPortraitURL = "https://icon-library.com/images/unknown-person-icon/unknown-person-icon-4.jpg"
+
+// wikipediaClient has the same timeout reasoning as openOpusClient - fail
+// fast on a slow/unreachable connection rather than hanging the request.
+var wikipediaClient = &http.Client{Timeout: 8 * time.Second}
+
+type wikipediaSummary struct {
+	Thumbnail struct {
+		Source string `json:"source"`
+	} `json:"thumbnail"`
+}
+
+// getWikipediaPortrait looks up a person's lead photo via Wikipedia's REST
+// summary API - OpenOpus's own "portrait" field frequently points at a
+// dead/blank image, whereas Wikipedia's lead photo for a composer is
+// usually the very same photo a Google Images search would show first
+// anyway, and is free and reliable to fetch. Returns "" (never an error)
+// if the page doesn't exist, has no photo, or the request fails - callers
+// fall back to the generic placeholder icon in that case.
+func getWikipediaPortrait(name string) string {
+	apiURL := "https://en.wikipedia.org/api/rest_v1/page/summary/" + url.PathEscape(strings.ReplaceAll(name, " ", "_"))
+	req, err := http.NewRequest(http.MethodGet, apiURL, nil)
+	if err != nil {
+		return ""
+	}
+	// Wikimedia's API etiquette asks for a descriptive User-Agent on every
+	// request - requests without one can be throttled or rejected.
+	req.Header.Set("User-Agent", "SheetAble/1.0 (self-hosted sheet music library)")
+
+	resp, err := wikipediaClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	var summary wikipediaSummary
+	if err := json.Unmarshal(body, &summary); err != nil {
+		return ""
+	}
+	return summary.Thumbnail.Source
 }
 
 func safeComposer(server *Server, composer string) Comp {
@@ -326,6 +400,19 @@ func safeComposer(server *Server, composer string) Comp {
 		// Used for chinese/japanese chars etc
 		unideCodeName := Unidecode(compo.CompleteName)
 		compo.SafeName = sanitize.Name(unideCodeName)
+	}
+
+	// Prefer a real Wikipedia photo over OpenOpus's own portrait field.
+	// Look up using OpenOpus's resolved CompleteName when we have one (e.g.
+	// "Johann Sebastian Bach" rather than whatever partial name was typed)
+	// since that's far more likely to land on the composer's own Wikipedia
+	// page instead of a disambiguation page with no photo.
+	lookupName := compo.CompleteName
+	if lookupName == "" {
+		lookupName = composer
+	}
+	if portrait := getWikipediaPortrait(lookupName); portrait != "" {
+		compo.Portrait = portrait
 	}
 
 	comp := models.Composer{
@@ -373,6 +460,10 @@ func createFile(uid uint32, server *Server, fullpath string, file multipart.File
 
 	err = utils.OsCreateFile(fullpath, file)
 	if err != nil {
+		// Don't leave an orphaned DB row behind with no PDF to back it -
+		// that's exactly what used to show up in the library as a
+		// "duplicate" sheet with a broken/missing PDF link.
+		server.DB.Where("safe_sheet_name = ?", sheet.SafeSheetName).Delete(&models.Sheet{})
 		return err
 	}
 	return nil

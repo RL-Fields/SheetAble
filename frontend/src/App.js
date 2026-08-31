@@ -36,6 +36,8 @@ import "./App.css";
 //import Logo from "./Images/logo.png";
 import SearchPage from "./Components/SearchPage/SearchPage";
 import TagsPage from "./Components/TagsPage/TagsPage";
+import InstrumentsPage from "./Components/InstrumentsPage/InstrumentsPage";
+import InstrumentPage from "./Components/InstrumentPage/InstrumentPage";
 //import ForgotPassword from "./Components/Authentication/ForgotPasswordPage";
 import ForgotPasswordPage from "./Components/Authentication/ForgotPasswordPage";
 import ResetPasswordPage from "./Components/Authentication/ResetPasswordPage";
@@ -100,6 +102,12 @@ function App() {
                 <Route exact path="/settings" component={Settings} />
                 <Route exact path="/ping" component={Ping} />
                 <Route exact path="/tag/:tagName" component={TagsPage} />
+                <Route exact path="/instruments" component={InstrumentsPage} />
+                <Route
+                  exact
+                  path="/instrument/:instrumentName"
+                  component={InstrumentPage}
+                />
                 <Route component={PageNotFound} />
                 <Route
                   exact

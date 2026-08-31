@@ -199,6 +199,90 @@ func (server *Server) FindSheetsByTag(c *gin.Context) {
 
 }
 
+func (server *Server) AppendInstrument(c *gin.Context) {
+	/*
+		This endpoint will tag a sheet with an instrument, chosen from the
+		fixed instrument list the frontend offers (nothing enforces that
+		list server-side - it's stored as a plain string, same as tags).
+		Example Request
+		POST /api/instrument/sheet/fuer-elise
+			Body (FormValue):
+			- instrumentValue: Piano
+	*/
+
+	sheet := getSheet(server.DB, c)
+	if sheet == nil {
+		return
+	}
+
+	var instrumentForm forms.InstrumentRequest
+	if err := c.ShouldBind(&instrumentForm); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+	if instrumentForm.InstrumentValue == "" {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("No instrumentValue given"))
+		return
+	}
+
+	sheet.AppendInstrument(server.DB, instrumentForm.InstrumentValue)
+
+	c.JSON(http.StatusOK, "Instrument: ["+instrumentForm.InstrumentValue+"] was successfully appended")
+}
+
+func (server *Server) DeleteInstrument(c *gin.Context) {
+	/*
+		This endpoint will remove an instrument tag from a sheet
+		Example Request
+		POST /api/instrument/delete/sheet/fuer-elise
+			Body (FormValue):
+			- instrumentValue: Piano
+	*/
+
+	sheet := getSheet(server.DB, c)
+	if sheet == nil {
+		return
+	}
+
+	var instrumentForm forms.InstrumentRequest
+	if err := c.ShouldBind(&instrumentForm); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+
+	removed := sheet.DeleteInstrument(server.DB, instrumentForm.InstrumentValue)
+	if !removed {
+		utils.DoError(c, http.StatusNotFound, fmt.Errorf("unable to find instrument: %s", instrumentForm.InstrumentValue))
+		return
+	}
+
+	c.JSON(http.StatusOK, "Instrument: ["+instrumentForm.InstrumentValue+"] was successfully removed")
+}
+
+func (server *Server) FindSheetsByInstrument(c *gin.Context) {
+	/*
+		Returns every sheet tagged with the given instrument.
+		Example Request
+		POST /api/instrument
+			Body (FormValue):
+			- instrumentValue: Piano
+	*/
+
+	var instrumentForm forms.InstrumentRequest
+	if err := c.ShouldBind(&instrumentForm); err != nil {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("bad upload request: %v", err))
+		return
+	}
+	if instrumentForm.InstrumentValue == "" {
+		utils.DoError(c, http.StatusBadRequest, fmt.Errorf("No instrumentValue given"))
+		return
+	}
+
+	sheets := models.FindSheetByInstrument(server.DB, instrumentForm.InstrumentValue)
+
+	c.JSON(http.StatusOK, sheets)
+}
+
 func (server *Server) UpdateSheetInformationText(c *gin.Context) {
 	/*
 		This endpoint will update a sheet information text

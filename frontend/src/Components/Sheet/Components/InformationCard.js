@@ -5,9 +5,12 @@ import { IconButton } from "@material-ui/core";
 import EditIcon from "@material-ui/icons/Edit";
 import Modal from "../../Sidebar/Modal/Modal";
 import ModalContent from "./ModalContentTag.js";
+import ModalContentInstrument from "./ModalContentInstrument.js";
 
-function InformationCard({ infoText, tags, sheetName }) {
+function InformationCard({ infoText, tags, instruments, sheetName }) {
   const [modal, setModal] = useState(false);
+  const [instrumentModal, setInstrumentModal] = useState(false);
+  const instrumentList = instruments || [];
 
   return (
     <div className="information_card">
@@ -44,6 +47,46 @@ function InformationCard({ infoText, tags, sheetName }) {
             onClose={() => setModal(false)}
             sheetName={sheetName}
             tags={tags}
+          />
+        </Modal>
+      </div>
+      <div className="header_wrapper">
+        <h1>Instruments</h1>
+        {instrumentList.map((instrument) => (
+          <div>
+            <a
+              href={`/instrument/${encodeURIComponent(instrument)}`}
+              style={{ textDecoration: "none", color: "black" }}
+            >
+              <span
+                className="dot"
+                style={{
+                  backgroundColor:
+                    dominantColors[
+                      Math.floor(Math.random() * dominantColors.length)
+                    ],
+                }}
+              />
+
+              <span>{instrument}</span>
+            </a>
+          </div>
+        ))}
+        <span>&nbsp;&nbsp;</span>
+        <div className="add" onClick={() => setInstrumentModal(true)}>
+          <IconButton>
+            <EditIcon />
+          </IconButton>
+        </div>
+        <Modal
+          title="Edit Instruments"
+          onClose={() => setInstrumentModal(false)}
+          show={instrumentModal}
+        >
+          <ModalContentInstrument
+            onClose={() => setInstrumentModal(false)}
+            sheetName={sheetName}
+            instruments={instrumentList}
           />
         </Modal>
       </div>

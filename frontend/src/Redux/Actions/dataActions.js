@@ -388,6 +388,64 @@ export const deleteTag = (tagName, sheetName, _callback) => (dispatch) => {
     });
 };
 
+export const getInstrumentSheets = (instrumentName, _callback) => (dispatch) => {
+  let bodyFormData = new FormData();
+  bodyFormData.append("instrumentValue", instrumentName);
+
+  axios
+    .post("/instrument", bodyFormData)
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => {
+      if (err.request && err.request.status === 401) {
+        store.dispatch(logoutUser());
+        window.location.href = "/login";
+      }
+      console.log(err);
+    });
+};
+
+export const addInstrument =
+  (instrumentName, sheetName, _callback) => (dispatch) => {
+    let bodyFormData = new FormData();
+    bodyFormData.append("instrumentValue", instrumentName);
+
+    axios
+      .post(`/instrument/sheet/${sheetName}`, bodyFormData)
+      .then((res) => {
+        store.dispatch(resetData());
+        window.location.reload();
+      })
+      .catch((err) => {
+        if (err.request.status === 401) {
+          store.dispatch(logoutUser());
+          window.location.href = "/login";
+        }
+        console.log(err);
+      });
+  };
+
+export const deleteInstrument =
+  (instrumentName, sheetName, _callback) => (dispatch) => {
+    let bodyFormData = new FormData();
+    bodyFormData.append("instrumentValue", instrumentName);
+
+    axios
+      .post(`/instrument/delete/sheet/${sheetName}`, bodyFormData)
+      .then((res) => {
+        store.dispatch(resetData());
+        window.location.reload();
+      })
+      .catch((err) => {
+        if (err.request.status === 401) {
+          store.dispatch(logoutUser());
+          window.location.href = "/login";
+        }
+        console.log(err);
+      });
+  };
+
 export const editInfoText = (infoText, sheetName, _callback) => (dispatch) => {
   let bodyFormData = new FormData();
   bodyFormData.append("informationText", infoText);
@@ -547,3 +605,66 @@ export const bulkDeleteTag =
         if (_onError) _onError(extractErrorMessage(err));
       });
 };
+
+// Set (replace) the composer for many sheets at once.
+export const bulkSetComposer =
+  (sheetNames, composer, _callback, _onError) => (dispatch) => {
+    axios
+      .post("/composer/bulk", { sheet_names: sheetNames, composer })
+      .then((res) => {
+        _callback(res.data);
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
+  };
+
+// Add one instrument to many sheets at once (additive - a sheet keeps
+// whatever instruments it already had, same as bulk tag add).
+export const bulkAddInstrument =
+  (sheetNames, instrumentValue, _callback, _onError) => (dispatch) => {
+    axios
+      .post("/instrument/bulk", {
+        sheet_names: sheetNames,
+        instrument_value: instrumentValue,
+      })
+      .then((res) => {
+        _callback(res.data);
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
+  };
+
+// Re-resolve portraits for every composer whose portrait is currently
+// blank/broken (the generic placeholder). Safe to run more than once.
+export const backfillComposerPortraits = (_callback, _onError) => (dispatch) => {
+  axios
+    .post("/composers/backfill-portraits")
+    .then((res) => {
+      _callback(res.data);
+    })
+    .catch((err) => {
+      checkAuthErr(err, dispatch);
+      if (_onError) _onError(extractErrorMessage(err));
+    });
+};
+
+// Remove one instrument from many sheets at once.
+export const bulkDeleteInstrument =
+  (sheetNames, instrumentValue, _callback, _onError) => (dispatch) => {
+    axios
+      .post("/instrument/bulk/delete", {
+        sheet_names: sheetNames,
+        instrument_value: instrumentValue,
+      })
+      .then((res) => {
+        _callback(res.data);
+      })
+      .catch((err) => {
+        checkAuthErr(err, dispatch);
+        if (_onError) _onError(extractErrorMessage(err));
+      });
+  };

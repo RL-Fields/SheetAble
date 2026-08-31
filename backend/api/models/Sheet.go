@@ -26,6 +26,11 @@ type Sheet struct {
 	CreatedAt       time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt       time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 	Tags            pq.StringArray `gorm:"type:text[]" json:"tags"`
+	// Instruments a sheet is tagged with, chosen from a fixed list on the
+	// frontend (see Utils/instruments.js) rather than typed freely like
+	// Tags - a sheet can carry more than one (duets, etc). Same underlying
+	// shape as Tags, just a separate column so the two don't mix in the UI.
+	Instruments     pq.StringArray `gorm:"type:text[]" json:"instruments"`
 	InformationText string         `json:"information_text"`
 }
 
@@ -38,6 +43,7 @@ func (s *Sheet) Prepare() {
 	s.UpdatedAt = time.Now()
 	s.PdfUrl = "sheet/pdf/" + s.SafeComposer + "/" + s.SafeSheetName
 	s.Tags = pq.StringArray{}
+	s.Instruments = pq.StringArray{}
 }
 
 func (s *Sheet) SaveSheet(db *gorm.DB) (*Sheet, error) {
@@ -151,6 +157,22 @@ func SearchSheet(db *gorm.DB, searchValue string) []*Sheet {
 	return sheets
 }
 
+func FindSheetByInstrument(db *gorm.DB, instrument string) []*Sheet {
+
+	var allSheets []*Sheet
+	var affectedSheets []*Sheet
+
+	db.Find(&allSheets)
+
+	for _, sheet := range allSheets {
+		if utils.CheckSliceContains(sheet.Instruments, instrument) {
+			affectedSheets = append(affectedSheets, sheet)
+		}
+	}
+
+	return affectedSheets
+}
+
 func ComposerEqual(composer string) func(db *gorm.DB) *gorm.DB {
 
 	// Scope that composer is equal to composer (if you only want sheets from a certain composer)
@@ -179,6 +201,36 @@ func (s *Sheet) DelteTag(db *gorm.DB, value string) bool {
 	newArray := pq.StringArray(utils.RemoveElementOfSlice(s.Tags, index))
 
 	db.Model(&s).Update(Sheet{Tags: newArray})
+
+	return true
+}
+
+func (s *Sheet) AppendInstrument(db *gorm.DB, instrument string) {
+
+	// Append a new instrument, skipping if the sheet is already tagged with
+	// it - the picker is a fixed checkbox list, so a duplicate call would
+	// otherwise double it up in the array.
+	if utils.CheckSliceContains(s.Instruments, instrument) {
+		return
+	}
+
+	newArray := append(s.Instruments, instrument)
+
+	db.Model(&s).Update(Sheet{Instruments: newArray})
+}
+
+func (s *Sheet) DeleteInstrument(db *gorm.DB, value string) bool {
+
+	// Removing an instrument by its value
+	index := utils.FindIndexByValue(s.Instruments, value)
+
+	if index == -1 {
+		return false
+	}
+
+	newArray := pq.StringArray(utils.RemoveElementOfSlice(s.Instruments, index))
+
+	db.Model(&s).Update(Sheet{Instruments: newArray})
 
 	return true
 }

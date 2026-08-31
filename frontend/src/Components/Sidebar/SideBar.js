@@ -100,6 +100,14 @@ function SideBar(props) {
           </li>
 
           <li>
+            <a href="/instruments">
+              <i className="bx bx-music"></i>
+              <span className="links_name">Instruments</span>
+            </a>
+            <span className="tooltip">Instruments</span>
+          </li>
+
+          <li>
             <a href="/search">
               <i className="bx bx-search-alt-2"></i>
               <span className="links_name">Search</span>

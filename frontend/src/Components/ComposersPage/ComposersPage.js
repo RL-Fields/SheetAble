@@ -9,6 +9,8 @@ import {
   incrementComposerPage,
   setComposerPage,
   decrementComposerPage,
+  backfillComposerPortraits,
+  resetData,
 } from "../../Redux/Actions/dataActions";
 
 import "./ComposersPage.css";
@@ -21,10 +23,34 @@ function ComposersPage({
   incrementComposerPage,
   setComposerPage,
   decrementComposerPage,
+  backfillComposerPortraits,
+  resetData,
   composerPage,
   totalComposerPages,
 }) {
   const [loading, setLoading] = useState(true);
+  const [fixingPortraits, setFixingPortraits] = useState(false);
+  const [portraitMessage, setPortraitMessage] = useState(null);
+
+  const handleFixPortraits = () => {
+    setFixingPortraits(true);
+    setPortraitMessage(null);
+    backfillComposerPortraits(
+      (result) => {
+        if (result.updated > 0) {
+          resetData();
+          window.location.reload();
+        } else {
+          setFixingPortraits(false);
+          setPortraitMessage("No missing portraits found.");
+        }
+      },
+      (errorMessage) => {
+        setFixingPortraits(false);
+        setPortraitMessage(`Failed: ${errorMessage}`);
+      }
+    );
+  };
 
   useEffect(() => {
     getData();
@@ -95,6 +121,11 @@ function ComposersPage({
                 <span className="doc_sheet ">Composers in your library</span>
                 <br />
                 <span className="doc_composer">Recently Added</span>
+                <br />
+                <button onClick={handleFixPortraits} disabled={fixingPortraits}>
+                  {fixingPortraits ? "Fixing..." : "Fix missing portraits"}
+                </button>
+                {portraitMessage && <span> {portraitMessage}</span>}
               </div>
               <div className="middle-part-container">
                 <ul className="all-sheets-container full-height">
@@ -178,6 +209,8 @@ const mapActionsToProps = {
   incrementComposerPage,
   setComposerPage,
   decrementComposerPage,
+  backfillComposerPortraits,
+  resetData,
 };
 
 export default connect(mapStateToProps, mapActionsToProps)(ComposersPage);

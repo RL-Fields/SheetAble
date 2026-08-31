@@ -117,9 +117,12 @@ function BulkUploadModal(props) {
         <div className="bulk-upload-summary">
           <p>
             ✓ {summary.uploaded} of {summary.total} uploaded
+            {summary.skipped > 0
+              ? `, ${summary.skipped} skipped (already in your library)`
+              : ""}
             {summary.failed > 0 ? `, ${summary.failed} failed` : ""}.
           </p>
-          {summary.failed > 0 && (
+          {(summary.skipped > 0 || summary.failed > 0) && (
             <ul>
               {summary.results
                 .filter((r) => !r.success)

@@ -1,0 +1,15 @@
+.instrument-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 24px;
+  cursor: pointer;
+}
+
+.instrument-dot {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  margin-bottom: 12px;
+}
