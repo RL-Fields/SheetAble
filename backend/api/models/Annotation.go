@@ -22,14 +22,18 @@ type SheetAnnotation struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-// Stroke is one freehand mark: a tool, a color, and a path of points given
-// as fractions (0..1) of the page's rendered width/height - not pixels -
-// so annotations line up correctly regardless of what size the PDF happens
-// to be displayed at (desktop vs. mobile width, zoom, etc.).
+// Stroke is one mark on the page: either a freehand path (Tool "pen" or
+// "highlighter", Points holding every point along the drag) or a text note
+// (Tool "text", Points holding a single anchor point and Text holding the
+// note's content). Points are fractions (0..1) of the page's rendered
+// width/height - not pixels - so annotations line up correctly regardless
+// of what size the PDF happens to be displayed at (desktop vs. mobile
+// width, zoom, etc.). Text is empty/omitted for freehand strokes.
 type Stroke struct {
 	Tool   string  `json:"tool"`
 	Color  string  `json:"color"`
 	Points []Point `json:"points"`
+	Text   string  `json:"text,omitempty"`
 }
 
 type Point struct {

@@ -282,6 +282,14 @@ function Sheet({
                   >
                     Highlighter
                   </button>
+                  <button
+                    className={
+                      annotation.tool === "text" ? "tool-btn active" : "tool-btn"
+                    }
+                    onClick={() => annotation.setTool("text")}
+                  >
+                    Text
+                  </button>
                   {annotation.colors.map((c) => (
                     <button
                       key={c}

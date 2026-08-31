@@ -30,6 +30,10 @@ export const ANNOTATION_COLORS = [
   autosave) - draw freely, undo/clear as needed, then Save writes the
   complete current stroke list for this page. Annotations are shared, not
   per-user: everyone viewing this sheet sees and can edit the same marks.
+
+  A third "tool", text, doesn't drag like pen/highlighter - a single click
+  prompts for text (via window.prompt, matching the plain-dialog pattern
+  already used for Clear's confirmation) and drops it at that point.
 */
 export function useSheetAnnotation(sheetName, pageNumber) {
   const dispatch = useDispatch();
@@ -117,8 +121,24 @@ export function useSheetAnnotation(sheetName, pageNumber) {
   const startStroke = (e) => {
     if (!annotateMode) return;
     e.preventDefault();
+    const point = getRelativePoint(e);
+
+    if (tool === "text") {
+      // Text doesn't drag - place it with one click/tap and prompt for its
+      // content right away, rather than tracking a currentStrokeRef drag.
+      const text = window.prompt("Annotation text:");
+      if (text && text.trim()) {
+        setStrokes((prev) => [
+          ...prev,
+          { tool: "text", color, points: [point], text: text.trim() },
+        ]);
+        setDirty(true);
+      }
+      return;
+    }
+
     drawingRef.current = true;
-    currentStrokeRef.current = { tool, color, points: [getRelativePoint(e)] };
+    currentStrokeRef.current = { tool, color, points: [point] };
   };
 
   const continueStroke = (e) => {
@@ -205,7 +225,14 @@ export function useSheetAnnotation(sheetName, pageNumber) {
 }
 
 function drawStroke(ctx, stroke, canvasWidth, canvasHeight) {
-  if (!stroke || !stroke.points || stroke.points.length < 2) return;
+  if (!stroke || !stroke.points || stroke.points.length === 0) return;
+
+  if (stroke.tool === "text") {
+    drawText(ctx, stroke, canvasWidth, canvasHeight);
+    return;
+  }
+
+  if (stroke.points.length < 2) return;
   ctx.save();
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
@@ -220,5 +247,24 @@ function drawStroke(ctx, stroke, canvasWidth, canvasHeight) {
     else ctx.lineTo(x, y);
   });
   ctx.stroke();
+  ctx.restore();
+}
+
+// Text strokes store a single anchor point (top-left, as a 0..1 fraction
+// like everything else) plus the text itself. Font size is a fixed pixel
+// value rather than fraction-scaled, matching how pen/highlighter line
+// widths are already fixed pixel values in this file.
+function drawText(ctx, stroke, canvasWidth, canvasHeight) {
+  if (!stroke.text || !stroke.points[0]) return;
+  const fontSize = 18;
+  const x = stroke.points[0].x * canvasWidth;
+  const y = stroke.points[0].y * canvasHeight;
+  ctx.save();
+  ctx.fillStyle = stroke.color;
+  ctx.font = `bold ${fontSize}px "Open Sans", sans-serif`;
+  ctx.textBaseline = "top";
+  stroke.text.split("\n").forEach((line, i) => {
+    ctx.fillText(line, x, y + i * (fontSize + 4));
+  });
   ctx.restore();
 }
