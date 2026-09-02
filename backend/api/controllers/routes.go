@@ -24,9 +24,14 @@ func (server *Server) SetupRouter() {
 
 	api.GET("", server.Home)
 	api.GET("/version", server.Version)
+	// Public on purpose - see GetLastActive's comment in home_controller.go.
+	// Meant to be polled by something outside the app (e.g. a Home
+	// Assistant sensor) to notice if it's gone unused for a while.
+	api.GET("/last-active", server.GetLastActive)
 	// SecureApi is still rooted at /api/... but it has the auth middleware so it'server routes check token on each call
 	secureApi := api.Group("")
 	secureApi.Use(middlewares.AuthMiddleware())
+	secureApi.Use(server.TouchActivityMiddleware())
 
 	// Login routes
 	api.POST("/login", server.Login)

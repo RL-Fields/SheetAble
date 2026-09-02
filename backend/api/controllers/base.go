@@ -77,7 +77,7 @@ func (server *Server) Initialize() {
 	server.DB.LogMode(false)
 
 	// Migrate DBs
-	server.DB.AutoMigrate(&models.User{}, &models.Sheet{}, &models.SheetAnnotation{}, &models.Instrument{})
+	server.DB.AutoMigrate(&models.User{}, &models.Sheet{}, &models.SheetAnnotation{}, &models.Instrument{}, &models.Activity{})
 
 	// Populate the master instrument list on first run (no-op if it's
 	// already been seeded, or if every instrument has since been deleted
@@ -85,6 +85,17 @@ func (server *Server) Initialize() {
 	models.SeedDefaultInstruments(server.DB)
 
 	server.SetupRouter()
+}
+
+// TouchActivityMiddleware records "someone just made an authenticated
+// request" - registered after AuthMiddleware on the secured routes, so it
+// only fires once a request has actually passed the login check. Backs
+// GetLastActive (see home_controller.go).
+func (server *Server) TouchActivityMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		models.TouchActivity(server.DB)
+		c.Next()
+	}
 }
 
 func (server *Server) Run(addr string, dev bool) {

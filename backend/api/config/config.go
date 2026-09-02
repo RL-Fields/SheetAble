@@ -77,6 +77,14 @@ type ServerConfig struct {
 	// to generate out of the box.
 	Pdf2PngUrl string `env:"PDF2PNG_URL"`
 
+	// HAWebhookURL, if set, is a full webhook URL to ping (fire-and-forget)
+	// every time TouchActivity records real usage - e.g.
+	// http://homeassistant.local:8123/api/webhook/<id>. Left empty by
+	// default so the base fork has no hard dependency on Home Assistant;
+	// activity tracking (GetLastActive) and everything else keeps working
+	// without it.
+	HAWebhookURL string `env:"HA_ACTIVITY_WEBHOOK_URL"`
+
 	Dev  bool `env:"DEV"`
 	Port int  `env:"PORT"`
 
